@@ -201,7 +201,7 @@ fn generate_error(key: &str, key_type: &str, value: &Value) -> String {
     format!("Input {} could not be converted to {}: {:?}", key, key_type, value)
 }
 
-pub fn read_config_yaml<'d>(yaml: String) -> Box<RunConfiguration> {
+pub fn read_config_yaml(yaml: String) -> Box<RunConfiguration> {
     // Reads an input configuration file from yaml using the serde package. Then sets the parameters
     // based on the inputs. A "." value means to use the default value.
 
@@ -352,7 +352,7 @@ pub fn build_config_from_args(args: Cli) -> Box<RunConfiguration> {
     // Create the ConfigBuilder object with default values
     let mut config_builder = ConfigBuilder::new();
     // Can't do a run without a reference
-    if args.reference != "".to_string() {
+    if !args.reference.is_empty() {
         config_builder.reference = args.reference.into();
     } else {
         panic!("No reference specified");
@@ -361,7 +361,7 @@ pub fn build_config_from_args(args: Cli) -> Box<RunConfiguration> {
     config_builder.read_len = args.read_length;
     config_builder.coverage = args.coverage;
     // default is empty string, in which case the config builder controls the default
-    if args.output_dir == "" {
+    if args.output_dir.is_empty() {
         config_builder.output_dir = env::current_dir().expect(
             "Error finding current directory. Please specify --output-dir (-o) option."
         )
@@ -373,7 +373,7 @@ pub fn build_config_from_args(args: Cli) -> Box<RunConfiguration> {
     // If this is unset, sets the default value of "neat_out" by CLI
     config_builder.output_prefix = args.output_file_prefix;
     // To set a minimum mutation rate, such as for debugging, or for small datasets, use this
-    if !args.minimum_mutations.is_none() {
+    if args.minimum_mutations.is_some() {
         let input_min_muts = args.minimum_mutations.unwrap() as usize;
         config_builder.minimum_mutations = Some(input_min_muts);
     }

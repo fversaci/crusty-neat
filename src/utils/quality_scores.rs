@@ -124,7 +124,7 @@ impl QualityScoreModel {
             self.weights_from_one,
         )
     }
-    pub fn generate_quality_scores(&self, run_read_length: usize, mut rng: &mut Rng) -> Vec<u32> {
+    pub fn generate_quality_scores(&self, run_read_length: usize, rng: &mut Rng) -> Vec<u32> {
         // Generates a list of quality scores of length run_read_length using the model. If the
         // input read length differs, we do some index magic to extrapolate the model
         // run_read_length: The desired read length for the model to generate.
@@ -136,7 +136,7 @@ impl QualityScoreModel {
         let dist = DiscreteDistribution::new(&self.seed_weights, false);
         // sample the scores list with the seed weights applied to generate the first score.
         // Samples an index based on the weights, which then selects the quality score.
-        let seed_score = self.quality_score_options[dist.sample(&mut rng)];
+        let seed_score = self.quality_score_options[dist.sample(rng)];
         // Adding the seed score to the list.
         score_list.push(seed_score);
         // To map from one length to another, we use the algorithm found in the original NEAT 2.0,
@@ -165,7 +165,7 @@ impl QualityScoreModel {
                 .expect("Error finding weights vector");
             // Now we build the dist and sample as above.
             let dist = DiscreteDistribution::new(weights, false);
-            let score = self.quality_score_options[dist.sample(&mut rng)];
+            let score = self.quality_score_options[dist.sample(rng)];
             score_list.push(score);
             current_index += 1;
         }

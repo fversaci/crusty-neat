@@ -14,7 +14,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> String {
      */
     let mut geno_string = String::new();
     for ploid in genotype {
-        geno_string += &format!("{}/", ploid.to_string())
+        geno_string += &format!("{}/", ploid)
     }
     geno_string.strip_suffix("/").unwrap().to_string()
 }
@@ -26,7 +26,7 @@ pub fn write_vcf(
     reference_path: &str,
     overwrite_output: bool,
     output_file_prefix: &str,
-    mut rng: &mut Rng,
+    rng: &mut Rng,
 ) -> io::Result<()> {
     /*
     Takes:
@@ -73,7 +73,7 @@ pub fn write_vcf(
             let ploid_index: Vec<usize> = (0..ploidy).collect();
             // By default we'll assume heterozygous (only on one ploid).
             let mut num_ploids: usize = 1;
-            let is_multiploid = (&mut rng).gen_bool(0.001);
+            let is_multiploid = rng.gen_bool(0.001);
             // If ploidy is only 1, then it doesn't matter
             if is_multiploid && ploidy > 1 {
                 // Mod a random int by ploidy and add to 1 (since we are modifying at least one
