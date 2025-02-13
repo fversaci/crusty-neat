@@ -9,7 +9,7 @@ use super::mutate::mutate_fasta;
 use super::vcf_tools::write_vcf;
 use super::read_models::read_quality_score_model_json;
 
-pub fn run_neat(config: Box<RunConfiguration>, mut rng: &mut Rng) -> Result<(), &'static str>{
+pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static str>{
     // Create the prefix of the files to write
     let output_file = format!("{}/{}", config.output_dir.display(), config.output_prefix);
 
@@ -30,7 +30,7 @@ pub fn run_neat(config: Box<RunConfiguration>, mut rng: &mut Rng) -> Result<(), 
     let (mutated_map, variant_locations) = mutate_fasta(
         &fasta_map,
         config.minimum_mutations,
-        &mut rng
+        rng
     );
 
     if config.produce_fasta {
@@ -52,7 +52,7 @@ pub fn run_neat(config: Box<RunConfiguration>, mut rng: &mut Rng) -> Result<(), 
             &config.reference,
             config.overwrite_output,
             &output_file,
-            &mut rng
+            rng
         ).unwrap();
     }
 
@@ -67,10 +67,10 @@ pub fn run_neat(config: Box<RunConfiguration>, mut rng: &mut Rng) -> Result<(), 
             config.paired_ended,
             config.fragment_mean,
             config.fragment_st_dev,
-            &mut rng
+            rng
         ).unwrap();
 
-        read_sets.extend(*data_set);
+        read_sets.extend(data_set);
     }
 
     if config.produce_fastq {

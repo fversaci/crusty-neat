@@ -11,7 +11,7 @@ use super::quality_scores::QualityScoreModel;
 fn complement(nucleotide: u8) -> u8 {
     // 0 = A, 1 = C, 2 = G, 3 = T,
     // matches with the complement of each nucleotide.
-    return match nucleotide {
+    match nucleotide {
         0 => 3,
         1 => 2,
         2 => 1,
@@ -20,7 +20,7 @@ fn complement(nucleotide: u8) -> u8 {
     }
 }
 
-fn reverse_complement(sequence: &Vec<u8>) -> Vec<u8> {
+fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
     // Returns the reverse complement of a vector of u8's representing a DNA sequence.
     let length = sequence.len();
     let mut rev_comp = Vec::new();
@@ -37,7 +37,7 @@ pub fn write_fastq(
     dataset: Vec<&Vec<u8>>,
     dataset_order: Vec<usize>,
     quality_score_model: QualityScoreModel,
-    mut rng: &mut Rng,
+    rng: &mut Rng,
 ) -> io::Result<()> {
     // Takes:
     // fastq_filename: prefix for the output fastq files.
@@ -70,7 +70,7 @@ pub fn write_fastq(
         let read_length = sequence.len() as u32;
         // Need to convert the raw scores to a string
         let quality_scores = quality_score_model.generate_quality_scores(
-            read_length as usize, &mut rng
+            read_length as usize, rng
         );
         // sequence name
         writeln!(&mut outfile1, "@{}{}/1", name_prefix.clone(), order_index + 1)?;
@@ -83,7 +83,7 @@ pub fn write_fastq(
         if paired_ended {
             // Need a quality score for this read as well
             let quality_scores = quality_score_model.generate_quality_scores(
-                read_length as usize, &mut rng
+                read_length as usize, rng
             );
             // sequence name
             writeln!(&mut outfile2, "@{}{}/2", name_prefix.clone(), order_index + 1)?;

@@ -54,7 +54,7 @@ pub fn read_fasta(
 }
 
 pub fn write_fasta(
-    fasta_output: &Box<HashMap<String, Vec<u8>>>,
+    fasta_output: &HashMap<String, Vec<u8>>,
     fasta_order: &Vec<String>,
     overwrite_output: bool,
     output_file: &str,
@@ -78,7 +78,7 @@ pub fn write_fasta(
         writeln!(&mut outfile, ">{}", contig)?;
         // write sequences[ploid] to this_fasta
         let mut i = 0;
-        let sequence_to_write: &Vec<u8> = &sequence;
+        let sequence_to_write: &Vec<u8> = sequence;
         while i < sequence_to_write.len() {
             let mut line = String::new();
             let mut max: usize = 70;

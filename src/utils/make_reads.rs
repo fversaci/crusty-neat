@@ -61,7 +61,7 @@ fn cover_dataset(
             if gap_size >= span_length {
                 // if we have accumulated enough gap, then we need to run the same layer again.
                 // We'll reset gap size but not increment layer_count.
-                gap_size = gap_size % span_length;
+                gap_size %= span_length;
                 continue;
             } else {
                 layer_count += 1;
@@ -83,7 +83,7 @@ fn cover_dataset(
         // sanity check. If we are already out of bounds, take the modulo
         if start >= span_length {
             // get us back in bounds
-            start = start % span_length;
+            start %= span_length;
             // add the gap
             gap_size += start;
         } else {
@@ -95,14 +95,14 @@ fn cover_dataset(
 }
 
 pub fn generate_reads(
-    mutated_sequence: &Vec<u8>,
+    mutated_sequence: &[u8],
     read_length: &usize,
     coverage: &usize,
     paired_ended: bool,
     mean: Option<f64>,
     st_dev: Option<f64>,
-    mut rng: &mut Rng,
-) -> Result<Box<HashSet<Vec<u8>>>, &'static str>{
+    rng: &mut Rng,
+) -> Result<HashSet<Vec<u8>>, &'static str>{
     // Takes:
     // mutated_sequence: a vector of u8's representing the mutated sequence.
     // read_length: the length ef the reads for this run
@@ -120,7 +120,7 @@ pub fn generate_reads(
         let fragment_distribution = NormalDistribution::new(mean.unwrap(), st_dev.unwrap());
         // add fragments to the fragment pool
         for _ in 0..num_frags {
-            let frag = fragment_distribution.sample(&mut rng).round() as usize;
+            let frag = fragment_distribution.sample(rng).round() as usize;
             fragment_pool.push(frag);
         }
     }
@@ -134,7 +134,7 @@ pub fn generate_reads(
         *read_length,
         fragment_pool,
         *coverage,
-        &mut rng,
+        rng,
     );
     // Generate the reads from the read positions.
     for (start, end) in read_positions {
@@ -144,7 +144,7 @@ pub fn generate_reads(
     if read_set.is_empty() {
         Err("No reads generated")
     } else {
-        Ok(Box::new(read_set))
+        Ok(read_set)
     }
 }
 

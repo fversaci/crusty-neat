@@ -13,7 +13,7 @@ use simple_rng::{Rng, DiscreteDistribution};
 pub fn mutate_fasta(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
-    mut rng: &mut Rng
+    rng: &mut Rng
 ) -> (Box<HashMap<String, Vec<u8>>>, Box<HashMap<String, Vec<(usize, u8, u8)>>>) {
     // Takes:
     // file_struct: a hashmap of contig names (keys) and a vector
@@ -56,7 +56,7 @@ pub fn mutate_fasta(
         // Round the number of positions to the nearest usize.
         // If mininum_mutations have been entered, we'll use that, else we'll set that to 0.
         let mut num_positions = 0;
-        if !minimum_mutations.is_none() {
+        if minimum_mutations.is_some() {
             // if a minimum mutations value was entered, then that is the minimum per contig.
             if Some(rounded_num_positions) < minimum_mutations {
                 num_positions = minimum_mutations.unwrap();
@@ -71,7 +71,7 @@ pub fn mutate_fasta(
         }
         // Mutates the sequence, using the original
         let (mutated_record, contig_mutations) = mutate_sequence(
-            &sequence, num_positions, &mut rng
+            sequence, num_positions, rng
         );
         // Add to the return struct and variants map.
         return_struct.entry(name.clone()).or_insert(mutated_record.clone());
@@ -82,9 +82,9 @@ pub fn mutate_fasta(
 }
 
 fn mutate_sequence(
-    sequence: &Vec<u8>,
+    sequence: &[u8],
     mut num_positions: usize,
-    mut rng: &mut Rng
+    rng: &mut Rng
 ) -> (Vec<u8>, Vec<(usize, u8, u8)>) {
     // Takes:
     // sequence: A u8 vector representing a sequence of DNA
@@ -98,7 +98,7 @@ fn mutate_sequence(
     // Takes a vector of u8's and mutate a few positions at random. Returns the mutated sequence and
     // a list of tuples with the position and the alts of the SNPs.
     debug!("Adding {} mutations", num_positions);
-    let mut mutated_record = sequence.clone();
+    let mut mutated_record = sequence.to_owned();
     // Randomly select num_positions from positions, weighted by gc bias and whatever. For now
     // all he weights are just equal.
     let weights = vec![1.0; mutated_record.len()];
@@ -109,7 +109,7 @@ fn mutate_sequence(
     for (index, base) in mutated_record.iter().enumerate() {
         if *base != 4 {
             pared_weights.push(weights[index]);
-            non_n_positions.push(index.clone());
+            non_n_positions.push(index);
         }
     }
 
@@ -122,7 +122,7 @@ fn mutate_sequence(
         num_positions = non_n_positions.len();
     }
     for _ in 0..num_positions {
-        let pos = non_n_positions[dist.sample(&mut rng)];
+        let pos = non_n_positions[dist.sample(rng)];
         indexes_to_mutate.push(pos);
     }
     // Build the default mutation model
@@ -135,7 +135,7 @@ fn mutate_sequence(
         // remember the reference for later.
         let reference_base = sequence[index];
         // pick a new base and assign the position to it.
-        mutated_record[index] = nucleotide_mutation_model.choose_new_nuc(reference_base, &mut rng);
+        mutated_record[index] = nucleotide_mutation_model.choose_new_nuc(reference_base, rng);
         // This check simply ensures that our model actually mutated the base.
         if mutated_record[index] == reference_base {
             error!("Need to check the code choosing nucleotides");

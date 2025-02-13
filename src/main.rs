@@ -58,7 +58,7 @@ fn main() {
     ]).unwrap();
     // set up the config struct based on whether there was an input config. Input config
     // overrides any other inputs.
-    let config = if args.config != "" {
+    let config = if !args.config.is_empty() {
         info!("Using Configuration file input: {}", &args.config);
         read_config_yaml(args.config)
     } else {
@@ -68,7 +68,7 @@ fn main() {
     };
     // Generate the RNG used for this run. If not we generate a random seed using the current time
     let mut seed_vec: Vec<String> = Vec::new();
-    if !config.rng_seed.is_none() {
+    if config.rng_seed.is_some() {
         // Force read it as a string, hopefully
         let raw_seed = config.rng_seed.clone().unwrap().to_string();
         for seed_term in raw_seed.split_whitespace() {
@@ -89,7 +89,7 @@ fn main() {
     }
     let mut rng: Rng = Rng::from_seed(seed_vec);
     // run the generate reads main script
-    run_neat(config, &mut rng).unwrap_or_else(|error| {
+    run_neat(*config, &mut rng).unwrap_or_else(|error| {
         panic!("Neat encountered a problem: {:?}", error)
     })
 }

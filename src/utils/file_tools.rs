@@ -14,7 +14,7 @@ pub fn read_lines(filename: &str) -> io::Result<io::Lines<io::BufReader<File>>> 
 
 pub fn open_file(mut filename: &mut str, overwrite_file: bool) -> Result<File, Error> {
     if overwrite_file && Path::new(filename).exists() {
-        File::options().create(true).write(true).open(&mut filename)
+        File::options().truncate(true).write(true).open(&mut filename)
     } else {
         File::options().create_new(true).append(true).open(&mut filename)
     }
