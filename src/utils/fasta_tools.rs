@@ -3,8 +3,6 @@
 use log::info;
 use std::io;
 use std::io::Write;
-use std::error;
-use std::fs;
 use std::collections::HashMap;
 use super::file_tools::read_lines;
 use super::file_tools::open_file;
@@ -71,7 +69,7 @@ pub fn write_fasta(
     // writing fasta output to files
     let mut output_fasta = format!("{}.fasta", output_file);
     let mut outfile = open_file(&mut output_fasta, overwrite_output)
-        .expect(&format!("Error opening {}", output_fasta));
+        .unwrap_or_else(|_| panic!("Error opening {}", output_fasta));
     for contig in fasta_order {
         let sequence = &fasta_output[contig];
         // Write contig name
