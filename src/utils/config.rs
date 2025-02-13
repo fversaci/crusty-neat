@@ -240,74 +240,74 @@ pub fn read_config_yaml(yaml: String) -> Box<RunConfiguration> {
                     _ => match key.as_str() {
                         "read_len" => {
                             config_builder.read_len = value.as_u64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "integer", &value
-                                ))
+                                )) })
                             as usize
                         },
                         "coverage" => {
                             config_builder.coverage = value.as_u64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "integer", &value
-                                ))
+                                )) })
                             as usize
                         },
                         "mutation_rate" => {
                             config_builder.mutation_rate = value.as_f64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "float", &value
-                                ))
+                                )) })
                         }
                         "ploidy" => {
                             config_builder.ploidy = value.as_u64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "integer", &value
-                                ))
+                                )) })
                             as usize
                         },
                         "paired_ended" => {
                             config_builder.paired_ended = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "fragment_mean" => {
                             config_builder.fragment_mean = value.as_f64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "float", &value
-                                ))
+                                )) })
                                 .into() // to make it an option
                         },
                         "fragment_st_dev" => {
                             config_builder.fragment_st_dev = value.as_f64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "float", &value
-                                ))
+                                )) })
                                 .into() // to make it an option
                         },
                         "produce_fastq" => {
                             config_builder.produce_fastq = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "produce_fasta" => {
                             config_builder.produce_fasta = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "produce_vcf" => {
                             config_builder.produce_vcf = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "produce_bam" => {
                             config_builder.produce_bam = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "rng_seed" => {
                             config_builder.rng_seed = value
@@ -318,15 +318,15 @@ pub fn read_config_yaml(yaml: String) -> Box<RunConfiguration> {
                         },
                         "overwrite_output" => {
                             config_builder.overwrite_output = value.as_bool()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "boolean", &value
-                                ))
+                                )) })
                         },
                         "minimum_mutations" => {
                             config_builder.minimum_mutations = Some(value.as_u64()
-                                .expect(&generate_error(
+                                .unwrap_or_else(|| { panic!("{}", generate_error(
                                     &key, "Valid integer", &value
-                                )) as usize)
+                                )) }) as usize)
                         },
                         "output_dir" => {
                             let output_path = value.as_str().unwrap().to_string();

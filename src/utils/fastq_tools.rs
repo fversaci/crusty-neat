@@ -56,12 +56,12 @@ pub fn write_fastq(
     let mut filename1 = String::from(fastq_filename) + "_r1.fastq";
     // open the file and append lines
     let mut outfile1 = open_file(&mut filename1, overwrite_output)
-        .expect(&format!("Error opening output {}", filename1));
+        .unwrap_or_else(|_| panic!("Error opening output {}", filename1));
     // setting up pairend ended reads For single ended reads, this will go unused.
     let mut filename2 = String::from(fastq_filename) + "_r2.fastq";
     // open the second file and append lines
     let mut outfile2 = open_file(&mut filename2, overwrite_output)
-        .expect(&format!("Error opening output {}", filename2));
+        .unwrap_or_else(|_| panic!("Error opening output {}", filename2));
     // write sequences. Orderd index is used for numbering, while read_index is from the shuffled
     // index array from a previous step
     for (order_index, read_index) in dataset_order.iter().enumerate() {

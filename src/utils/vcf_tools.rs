@@ -43,7 +43,7 @@ pub fn write_vcf(
     // set the filename of the output vcf
     let mut filename = format!("{}.vcf", output_file_prefix);
     let mut outfile = open_file(&mut filename, overwrite_output)
-        .expect(&format!("Problem opening {} for output.", filename));
+        .unwrap_or_else(|_| panic!("Problem opening {} for output.", filename));
     // add the vcf header
     writeln!(&mut outfile, "##fileformat=VCFv4.1")?;
     writeln!(&mut outfile, "##reference={}", reference_path)?;
