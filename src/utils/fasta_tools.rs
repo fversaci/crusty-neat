@@ -19,7 +19,7 @@ pub fn sequence_array_to_string(input_array: &Vec<u8>) -> String {
 
 pub fn read_fasta(
     fasta_path: &str
-) -> Result<(Box<HashMap<String, Vec<u8>>>, Vec<String>), io::Error> {
+) -> Result<(HashMap<String, Vec<u8>>, Vec<String>), io::Error> {
     // Reads a fasta file and turns it into a HashMap and puts it in the heap
     info!("Reading fasta: {}", fasta_path);
 
@@ -48,7 +48,7 @@ pub fn read_fasta(
     });
     // Need to pick up the last one
     fasta_map.entry(current_key.clone()).or_insert(temp_seq.clone());
-    Ok((Box::new(fasta_map), fasta_order))
+    Ok((fasta_map, fasta_order))
 }
 
 pub fn write_fasta(
@@ -128,7 +128,7 @@ mod tests {
         let fasta_output: HashMap<String, Vec<u8>> = HashMap::from([
             (String::from("H1N1_HA"), seq1)
         ]);
-        let fasta_pointer = Box::new(fasta_output);
+        let fasta_pointer = fasta_output;
         let fasta_order = vec![String::from("H1N1_HA")];
         let output_file = "test";
         let test_write = write_fasta(

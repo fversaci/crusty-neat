@@ -89,7 +89,7 @@ fn main() {
     }
     let mut rng: Rng = Rng::from_seed(seed_vec);
     // run the generate reads main script
-    run_neat(*config, &mut rng).unwrap_or_else(|error| {
+    run_neat(config, &mut rng).unwrap_or_else(|error| {
         panic!("Neat encountered a problem: {:?}", error)
     })
 }

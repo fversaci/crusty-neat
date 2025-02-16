@@ -75,7 +75,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
 
     if config.produce_fastq {
         info!("Shuffling output fastq data");
-        let outsets: Box<Vec<&Vec<u8>>> = Box::new(read_sets.iter().collect());
+        let outsets: Vec<&Vec<u8>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
         rng.shuffle(&mut outsets_order);
 
@@ -84,7 +84,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
             &output_file,
             config.overwrite_output,
             config.paired_ended,
-            *outsets,
+            outsets,
             outsets_order,
             quality_score_model,
             rng,
@@ -115,7 +115,7 @@ mod tests {
             "World".to_string(),
         ]);
         let _ = run_neat(
-            Box::new(config),
+            config,
             &mut rng,
         ).unwrap();
         fs::remove_dir_all("test").unwrap();
@@ -137,7 +137,7 @@ mod tests {
             "World".to_string(),
         ]);
         let _ = run_neat(
-            Box::new(config),
+            config,
             &mut rng,
         ).unwrap();
         fs::remove_dir_all("output").unwrap();

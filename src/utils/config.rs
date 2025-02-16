@@ -201,7 +201,7 @@ fn generate_error(key: &str, key_type: &str, value: &Value) -> String {
     format!("Input {} could not be converted to {}: {:?}", key, key_type, value)
 }
 
-pub fn read_config_yaml(yaml: String) -> Box<RunConfiguration> {
+pub fn read_config_yaml(yaml: String) -> RunConfiguration {
     // Reads an input configuration file from yaml using the serde package. Then sets the parameters
     // based on the inputs. A "." value means to use the default value.
 
@@ -342,10 +342,10 @@ pub fn read_config_yaml(yaml: String) -> Box<RunConfiguration> {
         }
     }
     let _ = &config_builder.check_and_print_config();
-    Box::new(config_builder.build())
+    config_builder.build()
 }
 
-pub fn build_config_from_args(args: Cli) -> Box<RunConfiguration> {
+pub fn build_config_from_args(args: Cli) -> RunConfiguration {
     // Takes in a bunch of args from a clap CLI and builds a config based on that. More CLI options
     // will need additional items entered here. To add them to the config, so they can be implemented.
 
@@ -377,9 +377,8 @@ pub fn build_config_from_args(args: Cli) -> Box<RunConfiguration> {
         let input_min_muts = args.minimum_mutations.unwrap() as usize;
         config_builder.minimum_mutations = Some(input_min_muts);
     }
-    // Wraps things in a Box to move this object to the heap
     let _ = &config_builder.check_and_print_config();
-    Box::new(config_builder.build())
+    config_builder.build()
 }
 
 #[cfg(test)]

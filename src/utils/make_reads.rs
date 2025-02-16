@@ -109,7 +109,7 @@ pub fn generate_reads(
     // coverage: the average depth of coverage for this run
     // rng: the random number generator for the run
     // Returns:
-    // HashSet of vectors representing the read sequences, stored on the heap in box.
+    // HashSet of vectors representing the read sequences.
     //
     // This takes a mutated sequence and produces a set of reads based on the mutated sequence. For
     // paired ended reads, this will generate a set of reads from each end, by taking the reverse
