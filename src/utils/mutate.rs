@@ -14,7 +14,7 @@ pub fn mutate_fasta(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
     rng: &mut Rng
-) -> (Box<HashMap<String, Vec<u8>>>, Box<HashMap<String, Vec<(usize, u8, u8)>>>) {
+) -> (HashMap<String, Vec<u8>>, HashMap<String, Vec<(usize, u8, u8)>>) {
     // Takes:
     // file_struct: a hashmap of contig names (keys) and a vector
     // representing the reference sequence.
@@ -78,7 +78,7 @@ pub fn mutate_fasta(
         all_variants.entry(name.clone()).or_insert(contig_mutations);
     }
 
-    (Box::new(return_struct), Box::new(all_variants))
+    (return_struct, all_variants)
 }
 
 fn mutate_sequence(
