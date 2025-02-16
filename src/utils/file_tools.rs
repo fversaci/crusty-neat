@@ -1,10 +1,10 @@
 // Various file tools needed throughout the code.
 
+use log::warn;
 use std::fs::File;
-use std::{fs, io};
 use std::io::{BufRead, Error};
 use std::path::Path;
-use log::warn;
+use std::{fs, io};
 
 pub fn read_lines(filename: &str) -> io::Result<io::Lines<io::BufReader<File>>> {
     // This creates a buffer to read lines
@@ -14,9 +14,15 @@ pub fn read_lines(filename: &str) -> io::Result<io::Lines<io::BufReader<File>>> 
 
 pub fn open_file(mut filename: &mut str, overwrite_file: bool) -> Result<File, Error> {
     if overwrite_file && Path::new(filename).exists() {
-        File::options().truncate(true).write(true).open(&mut filename)
+        File::options()
+            .truncate(true)
+            .write(true)
+            .open(&mut filename)
     } else {
-        File::options().create_new(true).append(true).open(&mut filename)
+        File::options()
+            .create_new(true)
+            .append(true)
+            .open(&mut filename)
     }
 }
 
@@ -33,9 +39,7 @@ pub fn check_parent(filename: &str) -> io::Result<&Path> {
 pub fn check_create_dir(path_to_check: &Path) {
     if !path_to_check.is_dir() {
         warn!("Directory not found, creating: {:?}", path_to_check);
-        fs::create_dir(path_to_check).expect(
-            "Error creating the directory"
-        );
+        fs::create_dir(path_to_check).expect("Error creating the directory");
     }
 }
 

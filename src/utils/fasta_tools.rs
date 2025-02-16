@@ -1,12 +1,12 @@
 // This library contains tools needed to process fasta files as input and output.
 
+use super::file_tools::open_file;
+use super::file_tools::read_lines;
+use super::nucleotides::{base_to_u8, u8_to_base};
 use log::info;
+use std::collections::HashMap;
 use std::io;
 use std::io::Write;
-use std::collections::HashMap;
-use super::file_tools::read_lines;
-use super::file_tools::open_file;
-use super::nucleotides::{u8_to_base, base_to_u8};
 
 pub fn sequence_array_to_string(input_array: &Vec<u8>) -> String {
     // Converts a sequence vector into a string representing the DNA sequence
@@ -17,9 +17,7 @@ pub fn sequence_array_to_string(input_array: &Vec<u8>) -> String {
     return_string
 }
 
-pub fn read_fasta(
-    fasta_path: &str
-) -> Result<(HashMap<String, Vec<u8>>, Vec<String>), io::Error> {
+pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<u8>>, Vec<String>), io::Error> {
     // Reads a fasta file and turns it into a HashMap and puts it in the heap
     info!("Reading fasta: {}", fasta_path);
 
@@ -33,7 +31,9 @@ pub fn read_fasta(
         Ok(l) => {
             if l.starts_with('>') {
                 if !current_key.is_empty() {
-                    fasta_map.entry(current_key.clone()).or_insert(temp_seq.clone());
+                    fasta_map
+                        .entry(current_key.clone())
+                        .or_insert(temp_seq.clone());
                 }
                 current_key = String::from(l.strip_prefix('>').unwrap());
                 fasta_order.push(current_key.clone());
@@ -43,11 +43,13 @@ pub fn read_fasta(
                     temp_seq.push(base_to_u8(char));
                 }
             }
-        },
-        Err(error) => panic!("Problem reading fasta file: {}", error)
+        }
+        Err(error) => panic!("Problem reading fasta file: {}", error),
     });
     // Need to pick up the last one
-    fasta_map.entry(current_key.clone()).or_insert(temp_seq.clone());
+    fasta_map
+        .entry(current_key.clone())
+        .or_insert(temp_seq.clone());
     Ok((fasta_map, fasta_order))
 }
 
@@ -91,7 +93,7 @@ pub fn write_fasta(
             writeln!(&mut outfile, "{}", line)?;
             i += 70;
         }
-    };
+    }
     Ok(())
 }
 
@@ -102,7 +104,9 @@ mod tests {
     #[test]
     fn test_conversions() {
         let initial_sequence = "AAAANNNNGGGGCCCCTTTTAAAA";
-        let test_map: Vec<u8> = vec![0, 0, 0, 0, 4, 4, 4, 4, 2, 2, 2, 2, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0, 0, 0];
+        let test_map: Vec<u8> = vec![
+            0, 0, 0, 0, 4, 4, 4, 4, 2, 2, 2, 2, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0, 0, 0,
+        ];
         let remap: Vec<u8> = initial_sequence.chars().map(|x| base_to_u8(x)).collect();
         assert_eq!(remap, test_map);
         assert_eq!(sequence_array_to_string(&test_map), initial_sequence);
@@ -125,18 +129,12 @@ mod tests {
     #[test]
     fn test_write_fasta() -> Result<(), Box<dyn error::Error>> {
         let seq1: Vec<u8> = vec![0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1];
-        let fasta_output: HashMap<String, Vec<u8>> = HashMap::from([
-            (String::from("H1N1_HA"), seq1)
-        ]);
+        let fasta_output: HashMap<String, Vec<u8>> =
+            HashMap::from([(String::from("H1N1_HA"), seq1)]);
         let fasta_pointer = fasta_output;
         let fasta_order = vec![String::from("H1N1_HA")];
         let output_file = "test";
-        let test_write = write_fasta(
-            &fasta_pointer,
-            &fasta_order,
-            true,
-            output_file
-        ).unwrap();
+        let test_write = write_fasta(&fasta_pointer, &fasta_order, true, output_file).unwrap();
         let file_name = "test.fasta";
         assert_eq!(test_write, ());
         let attr = fs::metadata(file_name).unwrap();

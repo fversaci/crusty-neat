@@ -1,6 +1,6 @@
 use super::quality_scores::QualityScoreModel;
-use std::fs;
 use serde_json;
+use std::fs;
 pub fn read_quality_score_model_json(filename: &str) -> QualityScoreModel {
     let f = fs::File::open(filename);
     let file = match f {
