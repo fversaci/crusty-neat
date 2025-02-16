@@ -111,7 +111,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let _ = run_neat(config, &mut rng).unwrap();
+        run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("test").unwrap();
     }
 
@@ -130,7 +130,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let _ = run_neat(config, &mut rng).unwrap();
+        run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("output").unwrap();
     }
 }
