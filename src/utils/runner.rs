@@ -1,37 +1,30 @@
-use std::collections::HashSet;
-use log::info;
-use simple_rng::Rng;
 use super::config::RunConfiguration;
 use super::fasta_tools::{read_fasta, write_fasta};
 use super::fastq_tools::write_fastq;
 use super::make_reads::generate_reads;
 use super::mutate::mutate_fasta;
-use super::vcf_tools::write_vcf;
 use super::read_models::read_quality_score_model_json;
+use super::vcf_tools::write_vcf;
+use log::info;
+use simple_rng::Rng;
+use std::collections::HashSet;
 
-pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static str>{
+pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static str> {
     // Create the prefix of the files to write
     let output_file = format!("{}/{}", config.output_dir.display(), config.output_prefix);
 
     // Reading the reference file into memory
     info!("Mapping reference fasta file: {}", &config.reference);
-    let (fasta_map, fasta_order) = read_fasta(&config.reference)
-        .unwrap();
+    let (fasta_map, fasta_order) = read_fasta(&config.reference).unwrap();
 
     // Load models that will be used for the runs.
     // For now we will use the one supplied, pulled directly from NEAT2.0's original model.
     let default_quality_score_model_file = "models/neat_quality_score_model.json";
-    let quality_score_model = read_quality_score_model_json(
-        default_quality_score_model_file
-    );
+    let quality_score_model = read_quality_score_model_json(default_quality_score_model_file);
 
     // Mutating the reference and recording the variant locations.
     info!("Mutating reference.");
-    let (mutated_map, variant_locations) = mutate_fasta(
-        &fasta_map,
-        config.minimum_mutations,
-        rng
-    );
+    let (mutated_map, variant_locations) = mutate_fasta(&fasta_map, config.minimum_mutations, rng);
 
     if config.produce_fasta {
         info!("Outputting fasta file");
@@ -40,7 +33,8 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
             &fasta_order,
             config.overwrite_output,
             &output_file,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     if config.produce_vcf {
@@ -52,8 +46,9 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
             &config.reference,
             config.overwrite_output,
             &output_file,
-            rng
-        ).unwrap();
+            rng,
+        )
+        .unwrap();
     }
 
     if config.produce_fastq {
@@ -68,9 +63,10 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
                 config.paired_ended,
                 config.fragment_mean,
                 config.fragment_st_dev,
-                rng
-            ).unwrap();
-            
+                rng,
+            )
+            .unwrap();
+
             read_sets.extend(data_set);
         }
 
@@ -88,7 +84,8 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
             outsets_order,
             quality_score_model,
             rng,
-        ).unwrap();
+        )
+        .unwrap();
         info!("Processing complete")
     }
     Ok(())
@@ -96,10 +93,10 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
 
 #[cfg(test)]
 mod tests {
+    use super::super::config::ConfigBuilder;
     use super::*;
     use std::fs;
     use std::path::PathBuf;
-    use super::super::config::ConfigBuilder;
 
     #[test]
     fn test_runner() {
@@ -114,10 +111,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let _ = run_neat(
-            config,
-            &mut rng,
-        ).unwrap();
+        let _ = run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("test").unwrap();
     }
 
@@ -136,10 +130,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let _ = run_neat(
-            config,
-            &mut rng,
-        ).unwrap();
+        let _ = run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("output").unwrap();
     }
 }

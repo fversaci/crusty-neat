@@ -20,10 +20,10 @@
 //     translate to Rust. May need a custom data structure. Like seed + subsequent.
 //   * Assumes a fixed read length, meaning you have to extrapolate for longer read lengths.
 //   * In Python, at least, this was slow, although in retrospect it didn't eat up much memory.
-use std::fmt::{Display, Formatter};
-use serde::{Deserialize, Serialize};
 use super::file_tools::open_file;
+use serde::{Deserialize, Serialize};
 use simple_rng::{DiscreteDistribution, Rng};
+use std::fmt::{Display, Formatter};
 
 #[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,9 +55,7 @@ impl Display for QualityScoreModel {
             "QualityScoreModel: (rl: {})\n\
             \tscores: {:?}\n\
             \tbinned? {:?}\n",
-            self.assumed_read_length,
-            self.quality_score_options,
-            self.binned_scores,
+            self.assumed_read_length, self.quality_score_options, self.binned_scores,
         )
     }
 }
@@ -154,12 +152,16 @@ impl QualityScoreModel {
 
             // First get the index of the previous score from the original scores list.
             // This will match the index in the score weights table that corresponds to that score.
-            let score_position = self.quality_score_options.iter().position(
-                |&x| x == score_list[current_index-1]
-            ).unwrap();
+            let score_position = self
+                .quality_score_options
+                .iter()
+                .position(|&x| x == score_list[current_index - 1])
+                .unwrap();
             // Now we have an index (in the default case 0..<4) of a vector for the position, based
             // on the previous score.
-            let weights: &Vec<u32> = self.weights_from_one.get(i)
+            let weights: &Vec<u32> = self
+                .weights_from_one
+                .get(i)
                 .expect("Error with quality score remap index.")
                 .get(score_position)
                 .expect("Error finding weights vector");
@@ -227,66 +229,25 @@ mod tests {
             binned_scores: true,
             assumed_read_length: 10,
             seed_weights: vec![1, 3, 1],
-            weights_from_one:
-            vec![
+            weights_from_one: vec![
                 // We'll always just set the first vector to 0. For now, hardcoded in
-                vec![
-                    vec![0, 0, 0],
-                    vec![0, 0, 0],
-                    vec![0, 0, 0]
-                ],
-                vec![
-                    vec![1, 3, 2],
-                    vec![1, 2, 3],
-                    vec![1, 1, 3]
-                ],
-                vec![
-                    vec![1, 1, 3],
-                    vec![1, 1, 3],
-                    vec![1, 1, 5]
-                ],
-                vec![
-                    vec![1, 1, 5],
-                    vec![1, 1, 5],
-                    vec![1, 1, 5]
-                ],
-                vec![
-                    vec![1, 1, 5],
-                    vec![1, 1, 5],
-                    vec![1, 1, 5]
-                ],
-                vec![
-                    vec![1, 1, 5],
-                    vec![1, 1, 5],
-                    vec![1, 1, 5]
-                ],
-                vec![
-                    vec![1, 1, 5],
-                    vec![1, 1, 5],
-                    vec![1, 1, 5]
-                ],
-                vec![
-                    vec![3, 1, 1],
-                    vec![2, 3, 1],
-                    vec![3, 5, 1]
-                ],
-                vec![
-                    vec![3, 1, 1],
-                    vec![3, 2, 1],
-                    vec![3, 1, 1]
-                ],
-                vec![
-                    vec![5, 1, 1],
-                    vec![5, 3, 1],
-                    vec![3, 5, 1]
-                ],
-            ]
+                vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]],
+                vec![vec![1, 3, 2], vec![1, 2, 3], vec![1, 1, 3]],
+                vec![vec![1, 1, 3], vec![1, 1, 3], vec![1, 1, 5]],
+                vec![vec![1, 1, 5], vec![1, 1, 5], vec![1, 1, 5]],
+                vec![vec![1, 1, 5], vec![1, 1, 5], vec![1, 1, 5]],
+                vec![vec![1, 1, 5], vec![1, 1, 5], vec![1, 1, 5]],
+                vec![vec![1, 1, 5], vec![1, 1, 5], vec![1, 1, 5]],
+                vec![vec![3, 1, 1], vec![2, 3, 1], vec![3, 5, 1]],
+                vec![vec![3, 1, 1], vec![3, 2, 1], vec![3, 1, 1]],
+                vec![vec![5, 1, 1], vec![5, 3, 1], vec![3, 5, 1]],
+            ],
         };
 
         let message = String::from(
-          "QualityScoreModel: (rl: 10)\n\
+            "QualityScoreModel: (rl: 10)\n\
           \tscores: [0, 10, 20]\n\
-          \tbinned? true\n"
+          \tbinned? true\n",
         );
         assert_eq!(format!("{}", score_model), message);
 
@@ -295,7 +256,7 @@ mod tests {
           \tscores: [0, 10, 20]\n\
           \tbinned? true\n\
           \tseed weights: [1, 3, 1]\n\
-          \tfirst weight array: [1, 3, 2]"
+          \tfirst weight array: [1, 3, 2]",
         );
         assert_eq!(format!("{}", score_model.display()), message);
 
@@ -309,7 +270,7 @@ mod tests {
         assert_eq!(format!("{}", score_model.display_it_all()), message);
 
         let message = String::from(
-            "QualityScoreModel { quality_score_options: [0, 10, 20], binned_scores: true"
+            "QualityScoreModel { quality_score_options: [0, 10, 20], binned_scores: true",
         );
         assert!(format!("{:?}", score_model).starts_with(&message))
     }
@@ -326,7 +287,10 @@ mod tests {
         let scores = model.generate_quality_scores(run_read_length, &mut rng);
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 100);
-        scores.iter().map(|x| assert!(model.quality_score_options.contains(x))).collect()
+        scores
+            .iter()
+            .map(|x| assert!(model.quality_score_options.contains(x)))
+            .collect()
     }
 
     #[test]
@@ -341,7 +305,10 @@ mod tests {
         let scores = model.generate_quality_scores(run_read_length, &mut rng);
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 150);
-        scores.iter().map(|x| assert!(model.quality_score_options.contains(x))).collect()
+        scores
+            .iter()
+            .map(|x| assert!(model.quality_score_options.contains(x)))
+            .collect()
     }
 
     #[test]
@@ -356,7 +323,10 @@ mod tests {
         let scores = model.generate_quality_scores(run_read_length, &mut rng);
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 200);
-        scores.iter().map(|x| assert!(model.quality_score_options.contains(x))).collect()
+        scores
+            .iter()
+            .map(|x| assert!(model.quality_score_options.contains(x)))
+            .collect()
     }
 
     #[test]
@@ -371,6 +341,9 @@ mod tests {
         let scores = model.generate_quality_scores(run_read_length, &mut rng);
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 2000);
-        scores.iter().map(|x| assert!(model.quality_score_options.contains(x))).collect()
+        scores
+            .iter()
+            .map(|x| assert!(model.quality_score_options.contains(x)))
+            .collect()
     }
 }

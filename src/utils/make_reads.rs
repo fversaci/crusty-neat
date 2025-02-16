@@ -4,8 +4,8 @@
 // read coverage. Generate reads uses this to create a list of coordinates to take slices from
 // the mutated fasta file. These will either be read-length fragments or fragment model length
 // fragments.
-use std::collections::{HashSet, VecDeque};
 use simple_rng::{NormalDistribution, Rng};
+use std::collections::{HashSet, VecDeque};
 
 fn cover_dataset(
     span_length: usize,
@@ -52,7 +52,7 @@ fn cover_dataset(
     while layer_count <= coverage {
         let fragment_length = cover_fragment_pool[0];
         cover_fragment_pool.push_back(fragment_length);
-        let temp_end = start+fragment_length;
+        let temp_end = start + fragment_length;
         if temp_end > span_length {
             // TODO some variation on this modulo idea will work for bacterial reads
             start = temp_end % span_length;
@@ -65,7 +65,7 @@ fn cover_dataset(
                 continue;
             } else {
                 layer_count += 1;
-                continue
+                continue;
             }
         }
         read_set.push((start, temp_end));
@@ -77,7 +77,7 @@ fn cover_dataset(
             gap_size += fragment_length - (read_length * 2)
         };
         // Picks a number between zero and a quarter of a read length
-        let wildcard: usize = (rng.rand_u32() % (read_length/4) as u32) as usize;
+        let wildcard: usize = (rng.rand_u32() % (read_length / 4) as u32) as usize;
         // adds to the start to give it some spice
         start += temp_end + wildcard;
         // sanity check. If we are already out of bounds, take the modulo
@@ -102,7 +102,7 @@ pub fn generate_reads(
     mean: Option<f64>,
     st_dev: Option<f64>,
     rng: &mut Rng,
-) -> Result<HashSet<Vec<u8>>, &'static str>{
+) -> Result<HashSet<Vec<u8>>, &'static str> {
     // Takes:
     // mutated_sequence: a vector of u8's representing the mutated sequence.
     // read_length: the length ef the reads for this run
@@ -129,13 +129,8 @@ pub fn generate_reads(
     // length of the mutated sequence
     let seq_len = mutated_sequence.len();
     // Generate a vector of read positions
-    let read_positions: Vec<(usize, usize)> = cover_dataset(
-        seq_len,
-        *read_length,
-        fragment_pool,
-        *coverage,
-        rng,
-    );
+    let read_positions: Vec<(usize, usize)> =
+        cover_dataset(seq_len, *read_length, fragment_pool, *coverage, rng);
     // Generate the reads from the read positions.
     for (start, end) in read_positions {
         read_set.insert(mutated_sequence[start..end].into());
@@ -165,14 +160,8 @@ mod tests {
             "World".to_string(),
         ]);
 
-        let cover = cover_dataset(
-            span_length,
-            read_length,
-            fragment_pool,
-            coverage,
-            &mut rng,
-        );
-        assert_eq!(cover[0], (0,10))
+        let cover = cover_dataset(span_length, read_length, fragment_pool, coverage, &mut rng);
+        assert_eq!(cover[0], (0, 10))
     }
 
     #[test]
@@ -187,13 +176,7 @@ mod tests {
             "World".to_string(),
         ]);
 
-        let cover = cover_dataset(
-            span_length,
-            read_length,
-            fragment_pool,
-            coverage,
-            &mut rng,
-        );
+        let cover = cover_dataset(span_length, read_length, fragment_pool, coverage, &mut rng);
         assert_eq!(cover[0], (0, 300))
     }
 
@@ -218,7 +201,8 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        ).unwrap();
+        )
+        .unwrap();
         println!("{:?}", reads);
         assert!(reads.contains(&(vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0])));
     }
@@ -244,7 +228,8 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        ).unwrap();
+        )
+        .unwrap();
 
         let run2 = generate_reads(
             &mutated_sequence,
@@ -254,7 +239,8 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(run1, run2)
     }

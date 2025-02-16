@@ -5,16 +5,19 @@
 // mutate_sequence adds actual mutations to the fasta sequence
 extern crate simple_rng;
 
-use std::collections::HashMap;
-use log::{debug, error, warn};
 use super::nucleotides::NucModel;
-use simple_rng::{Rng, DiscreteDistribution};
+use log::{debug, error, warn};
+use simple_rng::{DiscreteDistribution, Rng};
+use std::collections::HashMap;
 
 pub fn mutate_fasta(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
-    rng: &mut Rng
-) -> (HashMap<String, Vec<u8>>, HashMap<String, Vec<(usize, u8, u8)>>) {
+    rng: &mut Rng,
+) -> (
+    HashMap<String, Vec<u8>>,
+    HashMap<String, Vec<(usize, u8, u8)>>,
+) {
     // Takes:
     // file_struct: a hashmap of contig names (keys) and a vector
     // representing the reference sequence.
@@ -33,7 +36,7 @@ pub fn mutate_fasta(
     // string that represents the altered sequence and stores all the variants.
     const MUT_RATE: f64 = 0.01; // will update this with something more elaborate later.
     let mut return_struct: HashMap<String, Vec<u8>> = HashMap::new(); // the mutated sequences
-    // hashmap with keys of the contig names with a list of positions and alts under the contig.
+                                                                      // hashmap with keys of the contig names with a list of positions and alts under the contig.
     let mut all_variants: HashMap<String, Vec<(usize, u8, u8)>> = HashMap::new();
     // For each sequence, figure out how many variants it should get and add them
     for (name, sequence) in file_struct {
@@ -70,11 +73,11 @@ pub fn mutate_fasta(
             }
         }
         // Mutates the sequence, using the original
-        let (mutated_record, contig_mutations) = mutate_sequence(
-            sequence, num_positions, rng
-        );
+        let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng);
         // Add to the return struct and variants map.
-        return_struct.entry(name.clone()).or_insert(mutated_record.clone());
+        return_struct
+            .entry(name.clone())
+            .or_insert(mutated_record.clone());
         all_variants.entry(name.clone()).or_insert(contig_mutations);
     }
 
@@ -84,7 +87,7 @@ pub fn mutate_fasta(
 fn mutate_sequence(
     sequence: &[u8],
     mut num_positions: usize,
-    rng: &mut Rng
+    rng: &mut Rng,
 ) -> (Vec<u8>, Vec<(usize, u8, u8)>) {
     // Takes:
     // sequence: A u8 vector representing a sequence of DNA
@@ -177,11 +180,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let mutations = mutate_fasta(
-            &file_struct,
-            Some(1),
-            &mut rng,
-        );
+        let mutations = mutate_fasta(&file_struct, Some(1), &mut rng);
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
         let mutation_location = mutations.1["chr1"][0].0;
@@ -194,20 +193,15 @@ mod tests {
     #[test]
     fn test_mutate_fasta_no_mutations() {
         let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
-        let file_struct: HashMap<String, Vec<u8>> = HashMap::from([
-            ("chr1".to_string(), seq.clone())
-        ]);
+        let file_struct: HashMap<String, Vec<u8>> =
+            HashMap::from([("chr1".to_string(), seq.clone())]);
         // if a random mutation suddenly pops up in a build, it's probably the seed for this.
         let mut rng = Rng::from_seed(vec![
             "Hello".to_string(),
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let mutations = mutate_fasta(
-            &file_struct,
-            None,
-            &mut rng,
-        );
+        let mutations = mutate_fasta(&file_struct, None, &mut rng);
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
         assert!(mutations.1["chr1"].is_empty());

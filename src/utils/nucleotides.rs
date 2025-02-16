@@ -85,7 +85,6 @@ impl NucModel {
     }
 
     pub fn choose_new_nuc(&self, base: u8, rng: &mut Rng) -> u8 {
-
         // the canonical choices for DNA, as defined above
         let choices: [u8; 4] = [0, 1, 2, 3];
         // Pick the weights list for the base that was input
@@ -95,7 +94,9 @@ impl NucModel {
             2 => self.g.clone(),
             3 => self.t.clone(),
             // anything else we return the N value of 4
-            _ => { return 4; },
+            _ => {
+                return 4;
+            }
         };
         // Now we create a distribution from the weights and sample our choices.
         let dist = DiscreteDistribution::new(&weights, false);
@@ -122,7 +123,9 @@ mod tests {
         };
 
         let str = format!("{:?}", model);
-        let str_repr = String::from("NucModel { a: [0, 20, 1, 20], c: [20, 0, 1, 1], g: [1, 1, 0, 20], t: [20, 1, 20, 0] }");
+        let str_repr = String::from(
+            "NucModel { a: [0, 20, 1, 20], c: [20, 0, 1, 1], g: [1, 1, 0, 20], t: [20, 1, 20, 0] }",
+        );
         assert_eq!(str, str_repr);
         assert_eq!(model.a, a_weights);
     }
@@ -138,9 +141,7 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let test_model = NucModel::from(
-            vec![a_weights, c_weights, g_weights, t_weights]
-        );
+        let test_model = NucModel::from(vec![a_weights, c_weights, g_weights, t_weights]);
         // It actually mutates the base
         assert_ne!(test_model.choose_new_nuc(0, &mut rng), 0);
         assert_ne!(test_model.choose_new_nuc(1, &mut rng), 1);

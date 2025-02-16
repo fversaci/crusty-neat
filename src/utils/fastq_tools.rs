@@ -1,8 +1,8 @@
 // This library writes either single ended or paired-ended fastq files.
 
+use simple_rng::Rng;
 use std::io::Write;
 use std::{fs, io};
-use simple_rng::Rng;
 
 use super::fasta_tools::sequence_array_to_string;
 use super::file_tools::open_file;
@@ -69,11 +69,14 @@ pub fn write_fastq(
         // This assumes that the sequence length is the correct length at this point.
         let read_length = sequence.len() as u32;
         // Need to convert the raw scores to a string
-        let quality_scores = quality_score_model.generate_quality_scores(
-            read_length as usize, rng
-        );
+        let quality_scores = quality_score_model.generate_quality_scores(read_length as usize, rng);
         // sequence name
-        writeln!(&mut outfile1, "@{}{}/1", name_prefix.clone(), order_index + 1)?;
+        writeln!(
+            &mut outfile1,
+            "@{}{}/1",
+            name_prefix.clone(),
+            order_index + 1
+        )?;
         // Array as a string
         writeln!(&mut outfile1, "{}", sequence_array_to_string(&sequence))?;
         // The stupid plus sign
@@ -82,19 +85,27 @@ pub fn write_fastq(
         writeln!(&mut outfile1, "{}", quality_scores_to_str(quality_scores))?;
         if paired_ended {
             // Need a quality score for this read as well
-            let quality_scores = quality_score_model.generate_quality_scores(
-                read_length as usize, rng
-            );
+            let quality_scores =
+                quality_score_model.generate_quality_scores(read_length as usize, rng);
             // sequence name
-            writeln!(&mut outfile2, "@{}{}/2", name_prefix.clone(), order_index + 1)?;
+            writeln!(
+                &mut outfile2,
+                "@{}{}/2",
+                name_prefix.clone(),
+                order_index + 1
+            )?;
             // Array as a string
-            writeln!(&mut outfile2, "{}", sequence_array_to_string(&reverse_complement(&sequence)))?;
+            writeln!(
+                &mut outfile2,
+                "{}",
+                sequence_array_to_string(&reverse_complement(&sequence))
+            )?;
             // The stupid plus sign
             writeln!(&mut outfile2, "+")?;
             // Qual score of all F's for the whole thing.
             writeln!(&mut outfile2, "{}", quality_scores_to_str(quality_scores))?;
         }
-    };
+    }
     if !paired_ended {
         fs::remove_file(filename2)?;
     }
@@ -159,7 +170,8 @@ mod tests {
             dataset_order,
             quality_score_model,
             &mut rng,
-        ).unwrap();
+        )
+        .unwrap();
         let outfile1 = Path::new("test_single_r1.fastq");
         let outfile2 = Path::new("test_single_r2.fastq");
         assert!(outfile1.exists());
@@ -191,7 +203,8 @@ mod tests {
             dataset_order,
             quality_score_model,
             &mut rng,
-        ).unwrap();
+        )
+        .unwrap();
         let outfile1 = Path::new("test_paired_r1.fastq");
         let outfile2 = Path::new("test_paired_r2.fastq");
         assert!(outfile1.exists());

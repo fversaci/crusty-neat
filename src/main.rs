@@ -1,28 +1,27 @@
 extern crate clap;
-extern crate log;
-extern crate simplelog;
-extern crate serde_yaml;
 extern crate itertools;
-extern crate serde_json;
+extern crate log;
 extern crate serde;
+extern crate serde_json;
+extern crate serde_yaml;
 extern crate simple_rng;
+extern crate simplelog;
 extern crate statrs;
 
 mod utils;
 
 use chrono::Utc;
-use std::fs::File;
-use clap::{Parser};
+use clap::Parser;
 use log::*;
+use simple_rng::Rng;
 use simplelog::*;
+use std::fs::File;
 use utils::cli;
-use utils::config::{read_config_yaml, build_config_from_args};
+use utils::config::{build_config_from_args, read_config_yaml};
 use utils::file_tools::check_parent;
 use utils::runner::run_neat;
-use simple_rng::Rng;
 
 fn main() {
-
     info!("Begin processing");
     // parse the arguments from the command line
     let args = cli::Cli::parse();
@@ -37,7 +36,7 @@ fn main() {
         _ => panic!(
             "Unknown log level, please set to one of \
             Trace, Debug, Info, Warn, Error, or Off (case insensitive)."
-        )
+        ),
     };
     // Check that the parent dir exists
     let log_destination = check_parent(&args.log_dest).unwrap();
@@ -54,8 +53,9 @@ fn main() {
             level_filter,
             Config::default(),
             File::create(log_destination).unwrap(),
-        )
-    ]).unwrap();
+        ),
+    ])
+    .unwrap();
     // set up the config struct based on whether there was an input config. Input config
     // overrides any other inputs.
     let config = if !args.config.is_empty() {
@@ -74,7 +74,10 @@ fn main() {
         for seed_term in raw_seed.split_whitespace() {
             seed_vec.push(seed_term.to_string());
         }
-        info!("Seed string to regenerate these exact results: {}", raw_seed);
+        info!(
+            "Seed string to regenerate these exact results: {}",
+            raw_seed
+        );
     } else {
         // since no seed was provided, we'll use the datetime stamp
         info!(
@@ -85,12 +88,13 @@ fn main() {
         for item in timestamp.split_whitespace() {
             seed_vec.push(item.to_string());
         }
-        info!("Seed string to regenerate these exact results: {}", timestamp);
+        info!(
+            "Seed string to regenerate these exact results: {}",
+            timestamp
+        );
     }
     let mut rng: Rng = Rng::from_seed(seed_vec);
     // run the generate reads main script
-    run_neat(config, &mut rng).unwrap_or_else(|error| {
-        panic!("Neat encountered a problem: {:?}", error)
-    })
+    run_neat(config, &mut rng)
+        .unwrap_or_else(|error| panic!("Neat encountered a problem: {:?}", error))
 }
-
