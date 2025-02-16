@@ -408,15 +408,15 @@ mod tests {
         assert_eq!(test_configuration.coverage, 22);
         assert_eq!(test_configuration.mutation_rate, 0.09);
         assert_eq!(test_configuration.ploidy, 3);
-        assert_eq!(test_configuration.paired_ended, true);
+        assert!(test_configuration.paired_ended);
         assert_eq!(test_configuration.fragment_mean.unwrap(), 333.0);
         assert_eq!(test_configuration.fragment_st_dev.unwrap(), 33.0);
-        assert_eq!(test_configuration.produce_fastq, false);
-        assert_eq!(test_configuration.produce_vcf, true);
-        assert_eq!(test_configuration.produce_bam, true);
-        assert_eq!(test_configuration.produce_fasta, true);
+        assert!(!test_configuration.produce_fastq);
+        assert!(test_configuration.produce_vcf);
+        assert!(test_configuration.produce_bam);
+        assert!(test_configuration.produce_fasta);
         assert_eq!(test_configuration.rng_seed, None);
-        assert_eq!(test_configuration.overwrite_output, true);
+        assert!(test_configuration.overwrite_output);
         assert_eq!(test_configuration.output_dir, PathBuf::from("/my/my"));
         assert_eq!(test_configuration.output_prefix, "Hey.hey".to_string());
     }

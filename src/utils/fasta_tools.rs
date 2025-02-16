@@ -100,6 +100,8 @@ pub fn write_fasta(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error;
+    use std::fs;
 
     #[test]
     fn test_conversions() {
@@ -107,7 +109,7 @@ mod tests {
         let test_map: Vec<u8> = vec![
             0, 0, 0, 0, 4, 4, 4, 4, 2, 2, 2, 2, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0, 0, 0,
         ];
-        let remap: Vec<u8> = initial_sequence.chars().map(|x| base_to_u8(x)).collect();
+        let remap: Vec<u8> = initial_sequence.chars().map(base_to_u8).collect();
         assert_eq!(remap, test_map);
         assert_eq!(sequence_array_to_string(&test_map), initial_sequence);
     }
@@ -134,9 +136,8 @@ mod tests {
         let fasta_pointer = fasta_output;
         let fasta_order = vec![String::from("H1N1_HA")];
         let output_file = "test";
-        let test_write = write_fasta(&fasta_pointer, &fasta_order, true, output_file).unwrap();
+        write_fasta(&fasta_pointer, &fasta_order, true, output_file).unwrap();
         let file_name = "test.fasta";
-        assert_eq!(test_write, ());
         let attr = fs::metadata(file_name).unwrap();
         assert!(attr.len() > 0);
         fs::remove_file(file_name)?;
