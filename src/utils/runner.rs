@@ -56,24 +56,24 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static 
         ).unwrap();
     }
 
-    let mut read_sets: HashSet<Vec<u8>> = HashSet::new();
-    for (_name, sequence) in mutated_map.iter() {
-        // defined as a set of read sequences that should cover
-        // the mutated sequence `coverage` number of times
-        let data_set = generate_reads(
-            sequence,
-            &config.read_len,
-            &config.coverage,
-            config.paired_ended,
-            config.fragment_mean,
-            config.fragment_st_dev,
-            rng
-        ).unwrap();
-
-        read_sets.extend(data_set);
-    }
-
     if config.produce_fastq {
+        let mut read_sets: HashSet<Vec<u8>> = HashSet::new();
+        for (_name, sequence) in mutated_map.iter() {
+            // defined as a set of read sequences that should cover
+            // the mutated sequence `coverage` number of times
+            let data_set = generate_reads(
+                sequence,
+                &config.read_len,
+                &config.coverage,
+                config.paired_ended,
+                config.fragment_mean,
+                config.fragment_st_dev,
+                rng
+            ).unwrap();
+            
+            read_sets.extend(data_set);
+        }
+
         info!("Shuffling output fastq data");
         let outsets: Vec<&Vec<u8>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
