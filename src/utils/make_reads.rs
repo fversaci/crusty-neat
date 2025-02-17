@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 // This is the core functionality of NEAT. Generate reads turns a mutated fasta array into short reads.
 // The idea of cover_dataset is we generate a set of coordinates
 // That define reads and covers the dataset coverage number times, to give the contig the proper
@@ -102,7 +103,7 @@ pub fn generate_reads(
     mean: Option<f64>,
     st_dev: Option<f64>,
     rng: &mut Rng,
-) -> Result<HashSet<Vec<u8>>, &'static str> {
+) -> Result<HashSet<Vec<u8>>> {
     // Takes:
     // mutated_sequence: a vector of u8's representing the mutated sequence.
     // read_length: the length ef the reads for this run
@@ -117,7 +118,10 @@ pub fn generate_reads(
     let mut fragment_pool: Vec<usize> = Vec::new();
     if paired_ended {
         let num_frags = (mutated_sequence.len() / read_length) * (coverage * 2);
-        let fragment_distribution = NormalDistribution::new(mean.unwrap(), st_dev.unwrap());
+        let fragment_distribution = NormalDistribution::new(
+            mean.ok_or_else(|| anyhow!("mean can't be None when paired_ended is true"))?,
+            st_dev.ok_or_else(|| anyhow!("std_dev can't be None when paired_ended is true"))?,
+        );
         // add fragments to the fragment pool
         for _ in 0..num_frags {
             let frag = fragment_distribution.sample(rng).round() as usize;
@@ -137,7 +141,7 @@ pub fn generate_reads(
     }
     // puts the reads in the heap.
     if read_set.is_empty() {
-        Err("No reads generated")
+        Err(anyhow!("No reads generated"))
     } else {
         Ok(read_set)
     }
@@ -181,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_reads_single() {
+    fn test_generate_reads_single() -> Result<()> {
         let mutated_sequence = vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 2, 2, 2, 4, 4, 4, 4];
         let read_length = 10;
         let coverage = 1;
@@ -201,14 +205,14 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        )
-        .unwrap();
+        )?;
         println!("{:?}", reads);
         assert!(reads.contains(&(vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0])));
+        Ok(())
     }
 
     #[test]
-    fn test_seed_rng() {
+    fn test_seed_rng() -> Result<()> {
         let mutated_sequence = vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 2, 2, 2, 4, 4, 4, 4];
         let read_length = 10;
         let coverage = 1;
@@ -228,8 +232,7 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        )
-        .unwrap();
+        )?;
 
         let run2 = generate_reads(
             &mutated_sequence,
@@ -239,14 +242,14 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        )
-        .unwrap();
+        )?;
 
-        assert_eq!(run1, run2)
+        assert_eq!(run1, run2);
+        Ok(())
     }
 
     #[test]
-    fn test_generate_reads_paired() {
+    fn test_generate_reads_paired() -> Result<()> {
         let mutated_sequence: Vec<u8> = std::iter::repeat(1).take(100_000).collect();
         let read_length = 100;
         let coverage = 1;
@@ -266,8 +269,8 @@ mod tests {
             mean,
             st_dev,
             &mut rng,
-        );
-        println!("{:?}", reads);
-        assert!(!reads.unwrap().is_empty())
+        )?;
+        assert!(!reads.is_empty());
+        Ok(())
     }
 }

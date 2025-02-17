@@ -6,6 +6,7 @@
 extern crate simple_rng;
 
 use super::nucleotides::NucModel;
+use anyhow::{anyhow, Result};
 use log::{debug, error, warn};
 use simple_rng::{DiscreteDistribution, Rng};
 use std::collections::HashMap;
@@ -14,10 +15,10 @@ pub fn mutate_fasta(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
     rng: &mut Rng,
-) -> (
+) -> Result<(
     HashMap<String, Vec<u8>>,
     HashMap<String, Vec<(usize, u8, u8)>>,
-) {
+)> {
     // Takes:
     // file_struct: a hashmap of contig names (keys) and a vector
     // representing the reference sequence.
@@ -58,22 +59,14 @@ pub fn mutate_fasta(
         let rounded_num_positions = rough_num_positions.round() as usize;
         // Round the number of positions to the nearest usize.
         // If mininum_mutations have been entered, we'll use that, else we'll set that to 0.
-        let mut num_positions = 0;
-        if minimum_mutations.is_some() {
-            // if a minimum mutations value was entered, then that is the minimum per contig.
-            if Some(rounded_num_positions) < minimum_mutations {
-                num_positions = minimum_mutations.unwrap();
-            } else {
-                num_positions = rounded_num_positions;
-            }
+        let num_positions;
+        if let Some(min_mut) = minimum_mutations {
+            num_positions = min_mut.max(rounded_num_positions)
         } else {
-            // Else 0 is our minimum
-            if rough_num_positions.round() as usize > 0 {
-                num_positions = rough_num_positions.round() as usize;
-            }
-        }
+            num_positions = rough_num_positions.round() as usize
+        };
         // Mutates the sequence, using the original
-        let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng);
+        let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng)?;
         // Add to the return struct and variants map.
         return_struct
             .entry(name.clone())
@@ -81,14 +74,14 @@ pub fn mutate_fasta(
         all_variants.entry(name.clone()).or_insert(contig_mutations);
     }
 
-    (return_struct, all_variants)
+    Ok((return_struct, all_variants))
 }
 
 fn mutate_sequence(
     sequence: &[u8],
     mut num_positions: usize,
     rng: &mut Rng,
-) -> (Vec<u8>, Vec<(usize, u8, u8)>) {
+) -> Result<(Vec<u8>, Vec<(usize, u8, u8)>)> {
     // Takes:
     // sequence: A u8 vector representing a sequence of DNA
     // num_positions: The number of mutations to add to this sequence
@@ -142,12 +135,14 @@ fn mutate_sequence(
         // This check simply ensures that our model actually mutated the base.
         if mutated_record[index] == reference_base {
             error!("Need to check the code choosing nucleotides");
-            panic!("BUG: Mutation model failed to mutate the base. This should not happen.")
+            return Err(anyhow!(
+                "BUG: Mutation model failed to mutate the base. This should not happen."
+            ));
         }
         // add the location and alt base for the variant
         sequence_variants.push((index, mutated_record[index], reference_base))
     }
-    (mutated_record, sequence_variants)
+    Ok((mutated_record, sequence_variants))
 }
 
 #[cfg(test)]
@@ -155,7 +150,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mutate_sequence() {
+    fn test_mutate_sequence() -> Result<()> {
         let seq1: Vec<u8> = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
         let num_positions = 2;
         let mut rng = Rng::from_seed(vec![
@@ -163,15 +158,16 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let mutant = mutate_sequence(&seq1, num_positions, &mut rng);
+        let mutant = mutate_sequence(&seq1, num_positions, &mut rng)?;
         assert_eq!(mutant.0.len(), seq1.len());
         assert!(!mutant.1.is_empty());
         assert_eq!(mutant.0[0], 4);
         assert_eq!(mutant.0[1], 4);
+        Ok(())
     }
 
     #[test]
-    fn test_mutate_fasta() {
+    fn test_mutate_fasta() -> Result<()> {
         let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
         let file_struct: HashMap<String, Vec<u8>> =
             HashMap::from([("chr1".to_string(), seq.clone())]);
@@ -180,18 +176,19 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let mutations = mutate_fasta(&file_struct, Some(1), &mut rng);
+        let mutations = mutate_fasta(&file_struct, Some(1), &mut rng)?;
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
         let mutation_location = mutations.1["chr1"][0].0;
         let mutation_alt = mutations.1["chr1"][0].1;
         let mutation_ref = mutations.1["chr1"][0].2;
         assert_eq!(mutation_ref, seq[mutation_location]);
-        assert_ne!(mutation_alt, mutation_ref)
+        assert_ne!(mutation_alt, mutation_ref);
+        Ok(())
     }
 
     #[test]
-    fn test_mutate_fasta_no_mutations() {
+    fn test_mutate_fasta_no_mutations() -> Result<()> {
         let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
         let file_struct: HashMap<String, Vec<u8>> =
             HashMap::from([("chr1".to_string(), seq.clone())]);
@@ -201,9 +198,10 @@ mod tests {
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        let mutations = mutate_fasta(&file_struct, None, &mut rng);
+        let mutations = mutate_fasta(&file_struct, None, &mut rng)?;
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
         assert!(mutations.1["chr1"].is_empty());
+        Ok(())
     }
 }

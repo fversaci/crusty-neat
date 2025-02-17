@@ -16,16 +16,16 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
 
     // Reading the reference file into memory
     info!("Mapping reference fasta file: {}", &config.reference);
-    let (fasta_map, fasta_order) = read_fasta(&config.reference).unwrap();
+    let (fasta_map, fasta_order) = read_fasta(&config.reference)?;
 
     // Load models that will be used for the runs.
     // For now we will use the one supplied, pulled directly from NEAT2.0's original model.
     let default_quality_score_model_file = "models/neat_quality_score_model.json";
-    let quality_score_model = read_quality_score_model_json(default_quality_score_model_file);
+    let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
 
     // Mutating the reference and recording the variant locations.
     info!("Mutating reference.");
-    let (mutated_map, variant_locations) = mutate_fasta(&fasta_map, config.minimum_mutations, rng);
+    let (mutated_map, variant_locations) = mutate_fasta(&fasta_map, config.minimum_mutations, rng)?;
 
     if config.produce_fasta {
         info!("Outputting fasta file");
@@ -34,8 +34,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
             &fasta_order,
             config.overwrite_output,
             &output_file,
-        )
-        .unwrap();
+        )?;
     }
 
     if config.produce_vcf {
@@ -48,8 +47,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
             config.overwrite_output,
             &output_file,
             rng,
-        )
-        .unwrap();
+        )?;
     }
 
     if config.produce_fastq {
@@ -65,8 +63,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
                 config.fragment_mean,
                 config.fragment_st_dev,
                 rng,
-            )
-            .unwrap();
+            )?;
 
             read_sets.extend(data_set);
         }
@@ -85,8 +82,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
             outsets_order,
             quality_score_model,
             rng,
-        )
-        .unwrap();
+        )?;
         info!("Processing complete")
     }
     Ok(())
@@ -105,15 +101,15 @@ mod tests {
         config.reference = Some("test_data/H1N1.fa".to_string());
         // Because we are building this the wrong way, we need to manually create the output dir
         config.output_dir = PathBuf::from("test");
-        fs::create_dir("test").unwrap();
-        let config = config.build();
+        fs::create_dir("test")?;
+        let config = config.build()?;
         let mut rng = Rng::from_seed(vec![
             "Hello".to_string(),
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        run_neat(config, &mut rng).unwrap();
-        fs::remove_dir_all("test").unwrap();
+        run_neat(config, &mut rng)?;
+        fs::remove_dir_all("test")?;
         Ok(())
     }
 
@@ -125,15 +121,15 @@ mod tests {
         config.produce_vcf = true;
         // Because we are building this the wrong way, we need to manually create the output dir
         config.output_dir = PathBuf::from("output");
-        fs::create_dir("output").unwrap();
-        let config = config.build();
+        fs::create_dir("output")?;
+        let config = config.build()?;
         let mut rng = Rng::from_seed(vec![
             "Hello".to_string(),
             "Cruel".to_string(),
             "World".to_string(),
         ]);
-        run_neat(config, &mut rng).unwrap();
-        fs::remove_dir_all("output").unwrap();
+        run_neat(config, &mut rng)?;
+        fs::remove_dir_all("output")?;
         Ok(())
     }
 }

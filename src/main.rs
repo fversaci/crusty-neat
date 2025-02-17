@@ -34,10 +34,12 @@ fn main() -> Result<()> {
         "warn" => LevelFilter::Warn,
         "error" => LevelFilter::Error,
         "off" => LevelFilter::Off,
-        _ => panic!(
-            "Unknown log level, please set to one of \
-            Trace, Debug, Info, Warn, Error, or Off (case insensitive)."
-        ),
+        _ => {
+            return Err(anyhow!(
+                "Unknown log level, please set to one of \
+             Trace, Debug, Info, Warn, Error, or Off (case insensitive)."
+            ))
+        }
     };
     // Check that the parent dir exists
     let log_destination = check_parent(&args.log_dest)?;

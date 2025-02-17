@@ -21,6 +21,7 @@
 //   * Assumes a fixed read length, meaning you have to extrapolate for longer read lengths.
 //   * In Python, at least, this was slow, although in retrospect it didn't eat up much memory.
 use super::file_tools::open_file;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use simple_rng::{DiscreteDistribution, Rng};
 use std::fmt::{Display, Formatter};
@@ -122,7 +123,11 @@ impl QualityScoreModel {
             self.weights_from_one,
         )
     }
-    pub fn generate_quality_scores(&self, run_read_length: usize, rng: &mut Rng) -> Vec<u32> {
+    pub fn generate_quality_scores(
+        &self,
+        run_read_length: usize,
+        rng: &mut Rng,
+    ) -> Result<Vec<u32>> {
         // Generates a list of quality scores of length run_read_length using the model. If the
         // input read length differs, we do some index magic to extrapolate the model
         // run_read_length: The desired read length for the model to generate.
@@ -156,22 +161,22 @@ impl QualityScoreModel {
                 .quality_score_options
                 .iter()
                 .position(|&x| x == score_list[current_index - 1])
-                .unwrap();
+                .ok_or_else(|| anyhow!("index not matching"))?;
             // Now we have an index (in the default case 0..<4) of a vector for the position, based
             // on the previous score.
             let weights: &Vec<u32> = self
                 .weights_from_one
                 .get(i)
-                .expect("Error with quality score remap index.")
+                .ok_or_else(|| anyhow!("Error with quality score remap index."))?
                 .get(score_position)
-                .expect("Error finding weights vector");
+                .ok_or_else(|| anyhow!("Error finding weights vector"))?;
             // Now we build the dist and sample as above.
             let dist = DiscreteDistribution::new(weights, false);
             let score = self.quality_score_options[dist.sample(rng)];
             score_list.push(score);
             current_index += 1;
         }
-        score_list
+        Ok(score_list)
     }
     fn quality_index_remap(&self, run_read_length: usize) -> Vec<usize> {
         // Basically, this function does integer division (truncation) to fill positions
@@ -209,12 +214,13 @@ impl QualityScoreModel {
             indexes
         }
     }
-    pub fn write_out_quality_model(&self, filename: &mut str) -> serde_json::Result<()> {
+    pub fn write_out_quality_model(&self, filename: &mut str) -> Result<()> {
         // Uses the serde_json crate to write out the json form of the model. This will help us
         // create base datasets from old neat data, and give us a way to write out models that are
         // generated from user data.
-        let fileout = open_file(filename, false).unwrap();
-        serde_json::to_writer(fileout, self)
+        let fileout = open_file(filename, false)?;
+        serde_json::to_writer(fileout, self)?;
+        Ok(())
     }
 }
 
@@ -276,7 +282,7 @@ mod tests {
     }
 
     #[test]
-    fn test_quality_scores_short() {
+    fn test_quality_scores_short() -> Result<()> {
         let run_read_length = 100;
         let mut rng = Rng::from_seed(vec![
             "hello".to_string(),
@@ -284,17 +290,18 @@ mod tests {
             "world".to_string(),
         ]);
         let model = QualityScoreModel::new();
-        let scores = model.generate_quality_scores(run_read_length, &mut rng);
+        let scores = model.generate_quality_scores(run_read_length, &mut rng)?;
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 100);
-        scores
+        let _ = scores
             .iter()
             .map(|x| assert!(model.quality_score_options.contains(x)))
-            .collect()
+            .collect::<Vec<_>>();
+        Ok(())
     }
 
     #[test]
-    fn test_quality_scores_same() {
+    fn test_quality_scores_same() -> Result<()> {
         let run_read_length = 150;
         let mut rng = Rng::from_seed(vec![
             "hello".to_string(),
@@ -302,17 +309,18 @@ mod tests {
             "world".to_string(),
         ]);
         let model = QualityScoreModel::new();
-        let scores = model.generate_quality_scores(run_read_length, &mut rng);
+        let scores = model.generate_quality_scores(run_read_length, &mut rng)?;
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 150);
-        scores
+        let _ = scores
             .iter()
             .map(|x| assert!(model.quality_score_options.contains(x)))
-            .collect()
+            .collect::<Vec<_>>();
+        Ok(())
     }
 
     #[test]
-    fn test_quality_scores_long() {
+    fn test_quality_scores_long() -> Result<()> {
         let run_read_length = 200;
         let mut rng = Rng::from_seed(vec![
             "hello".to_string(),
@@ -320,17 +328,18 @@ mod tests {
             "world".to_string(),
         ]);
         let model = QualityScoreModel::new();
-        let scores = model.generate_quality_scores(run_read_length, &mut rng);
+        let scores = model.generate_quality_scores(run_read_length, &mut rng)?;
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 200);
-        scores
+        let _ = scores
             .iter()
             .map(|x| assert!(model.quality_score_options.contains(x)))
-            .collect()
+            .collect::<Vec<_>>();
+        Ok(())
     }
 
     #[test]
-    fn test_quality_scores_vast_difference() {
+    fn test_quality_scores_vast_difference() -> Result<()> {
         let run_read_length = 2000;
         let mut rng = Rng::from_seed(vec![
             "hello".to_string(),
@@ -338,12 +347,13 @@ mod tests {
             "world".to_string(),
         ]);
         let model = QualityScoreModel::new();
-        let scores = model.generate_quality_scores(run_read_length, &mut rng);
+        let scores = model.generate_quality_scores(run_read_length, &mut rng)?;
         assert!(!scores.is_empty());
         assert_eq!(scores.len(), 2000);
-        scores
+        let _ = scores
             .iter()
             .map(|x| assert!(model.quality_score_options.contains(x)))
-            .collect()
+            .collect::<Vec<_>>();
+        Ok(())
     }
 }

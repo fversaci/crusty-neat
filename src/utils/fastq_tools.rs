@@ -1,8 +1,9 @@
 // This library writes either single ended or paired-ended fastq files.
 
+use anyhow::Result;
 use simple_rng::Rng;
+use std::fs;
 use std::io::Write;
-use std::{fs, io};
 
 use super::fasta_tools::sequence_array_to_string;
 use super::file_tools::open_file;
@@ -38,7 +39,7 @@ pub fn write_fastq(
     dataset_order: Vec<usize>,
     quality_score_model: QualityScoreModel,
     rng: &mut Rng,
-) -> io::Result<()> {
+) -> Result<()> {
     // Takes:
     // fastq_filename: prefix for the output fastq files.
     // paired_ended: boolean to set paired ended mode on or off.
@@ -55,13 +56,11 @@ pub fn write_fastq(
     let name_prefix = "neat_generated_".to_string();
     let mut filename1 = String::from(fastq_filename) + "_r1.fastq";
     // open the file and append lines
-    let mut outfile1 = open_file(&mut filename1, overwrite_output)
-        .unwrap_or_else(|_| panic!("Error opening output {}", filename1));
+    let mut outfile1 = open_file(&mut filename1, overwrite_output)?;
     // setting up pairend ended reads For single ended reads, this will go unused.
     let mut filename2 = String::from(fastq_filename) + "_r2.fastq";
     // open the second file and append lines
-    let mut outfile2 = open_file(&mut filename2, overwrite_output)
-        .unwrap_or_else(|_| panic!("Error opening output {}", filename2));
+    let mut outfile2 = open_file(&mut filename2, overwrite_output)?;
     // write sequences. Orderd index is used for numbering, while read_index is from the shuffled
     // index array from a previous step
     for (order_index, read_index) in dataset_order.iter().enumerate() {
@@ -69,7 +68,8 @@ pub fn write_fastq(
         // This assumes that the sequence length is the correct length at this point.
         let read_length = sequence.len() as u32;
         // Need to convert the raw scores to a string
-        let quality_scores = quality_score_model.generate_quality_scores(read_length as usize, rng);
+        let quality_scores =
+            quality_score_model.generate_quality_scores(read_length as usize, rng)?;
         // sequence name
         writeln!(
             &mut outfile1,
@@ -86,7 +86,7 @@ pub fn write_fastq(
         if paired_ended {
             // Need a quality score for this read as well
             let quality_scores =
-                quality_score_model.generate_quality_scores(read_length as usize, rng);
+                quality_score_model.generate_quality_scores(read_length as usize, rng)?;
             // sequence name
             writeln!(
                 &mut outfile2,
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_fastq_single() {
+    fn test_write_fastq_single() -> Result<()> {
         let fastq_filename = "test_single";
         let overwrite_output = true;
         let paired_ended = false;
@@ -170,17 +170,17 @@ mod tests {
             dataset_order,
             quality_score_model,
             &mut rng,
-        )
-        .unwrap();
+        )?;
         let outfile1 = Path::new("test_single_r1.fastq");
         let outfile2 = Path::new("test_single_r2.fastq");
         assert!(outfile1.exists());
         assert!(!outfile2.exists());
-        fs::remove_file(outfile1).unwrap();
+        fs::remove_file(outfile1)?;
+        Ok(())
     }
 
     #[test]
-    fn test_write_fastq_paired() {
+    fn test_write_fastq_paired() -> Result<()> {
         let fastq_filename = "test_paired";
         // might as well test the o_o function as well
         let overwrite_output = false;
@@ -203,13 +203,13 @@ mod tests {
             dataset_order,
             quality_score_model,
             &mut rng,
-        )
-        .unwrap();
+        )?;
         let outfile1 = Path::new("test_paired_r1.fastq");
         let outfile2 = Path::new("test_paired_r2.fastq");
         assert!(outfile1.exists());
         assert!(outfile2.exists());
-        fs::remove_file(outfile1).unwrap();
-        fs::remove_file(outfile2).unwrap();
+        fs::remove_file(outfile1)?;
+        fs::remove_file(outfile2)?;
+        Ok(())
     }
 }
