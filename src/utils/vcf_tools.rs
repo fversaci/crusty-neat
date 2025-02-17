@@ -2,12 +2,12 @@ extern crate log;
 
 use super::file_tools::open_file;
 use super::nucleotides::u8_to_base;
+use anyhow::{anyhow, Result};
 use simple_rng::Rng;
 use std::collections::HashMap;
-use std::io;
 use std::io::Write;
 
-fn genotype_to_string(genotype: Vec<usize>) -> String {
+fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
     /*
     Converts a vector of 0s and 1s representing genotype to a standard
     vcf genotype string.
@@ -16,7 +16,10 @@ fn genotype_to_string(genotype: Vec<usize>) -> String {
     for ploid in genotype {
         geno_string += &format!("{}/", ploid)
     }
-    geno_string.strip_suffix("/").unwrap().to_string()
+    Ok(geno_string
+        .strip_suffix("/")
+        .ok_or_else(|| anyhow!("suffix not found"))?
+        .to_string())
 }
 
 pub fn write_vcf(
@@ -27,7 +30,7 @@ pub fn write_vcf(
     overwrite_output: bool,
     output_file_prefix: &str,
     rng: &mut Rng,
-) -> io::Result<()> {
+) -> Result<()> {
     /*
     Takes:
         variant_locations: A map of contig names keyed to lists of variants in that contig
@@ -42,8 +45,7 @@ pub fn write_vcf(
      */
     // set the filename of the output vcf
     let mut filename = format!("{}.vcf", output_file_prefix);
-    let mut outfile = open_file(&mut filename, overwrite_output)
-        .unwrap_or_else(|_| panic!("Problem opening {} for output.", filename));
+    let mut outfile = open_file(&mut filename, overwrite_output)?;
     // add the vcf header
     writeln!(&mut outfile, "##fileformat=VCFv4.1")?;
     writeln!(&mut outfile, "##reference={}", reference_path)?;
@@ -121,7 +123,7 @@ pub fn write_vcf(
                 mutation.0 + 1,
                 u8_to_base(mutation.2),
                 u8_to_base(mutation.1),
-                genotype_to_string(genotype),
+                genotype_to_string(genotype)?,
             );
 
             writeln!(&mut outfile, "{}", line)?;
@@ -137,13 +139,14 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn test_genotype_to_string() {
+    fn test_genotype_to_string() -> Result<()> {
         let genotype = vec![0, 1, 0];
-        assert_eq!(String::from("0/1/0"), genotype_to_string(genotype));
+        assert_eq!(String::from("0/1/0"), genotype_to_string(genotype)?);
+        Ok(())
     }
 
     #[test]
-    fn test_write_vcf() {
+    fn test_write_vcf() -> Result<()> {
         let variant_locations = HashMap::from([("chr1".to_string(), vec![(3, 0, 1), (7, 1, 2)])]);
         let fasta_order = vec!["chr1".to_string()];
         let ploidy = 2;
@@ -163,9 +166,9 @@ mod tests {
             overwrite_output,
             output_file_prefix,
             &mut rng,
-        )
-        .unwrap();
+        )?;
         assert!(Path::new("test.vcf").exists());
-        fs::remove_file("test.vcf").unwrap();
+        fs::remove_file("test.vcf")?;
+        Ok(())
     }
 }

@@ -1,4 +1,5 @@
 use super::quality_scores::QualityScoreModel;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::*;
 use std::fs;
@@ -43,15 +44,11 @@ impl QualityRaw {
     }
 }
 
-pub fn parse_neat_quality_scores(filename: &str) -> QualityScoreModel {
-    let f = fs::File::open(filename);
-    let file = match f {
-        Ok(l) => l,
-        Err(error) => panic!("Problem reading the quality json file: {}", error),
-    };
-    let quality_raw: QualityRaw = from_reader(file).expect("Problem with json file format.");
+pub fn parse_neat_quality_scores(filename: &str) -> Result<QualityScoreModel> {
+    let file = fs::File::open(filename)?;
+    let quality_raw: QualityRaw = from_reader(file)?;
     let quality_model: QualityScoreModel = quality_raw.convert_to_weights();
-    quality_model
+    Ok(quality_model)
 }
 
 #[cfg(test)]
@@ -59,15 +56,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_read_yaml() {
+    fn test_read_yaml() -> Result<()> {
         let filename = "test_data/test_model.json".to_string();
-        let qual_data = parse_neat_quality_scores(&filename);
+        let qual_data = parse_neat_quality_scores(&filename)?;
         assert_eq!(qual_data.seed_weights.len(), 42);
         assert_eq!(qual_data.weights_from_one.len(), 10);
         assert_eq!(qual_data.weights_from_one[0].len(), 10);
         assert_eq!(qual_data.weights_from_one[0][0].len(), 10);
         let mut out_file = "test_data/test.json".to_string();
-        qual_data.write_out_quality_model(&mut out_file).unwrap();
-        fs::remove_file(out_file).expect("Failed in removing test json file");
+        qual_data.write_out_quality_model(&mut out_file)?;
+        fs::remove_file(out_file)?;
+        Ok(())
     }
 }
