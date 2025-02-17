@@ -5,11 +5,12 @@ use super::make_reads::generate_reads;
 use super::mutate::mutate_fasta;
 use super::read_models::read_quality_score_model_json;
 use super::vcf_tools::write_vcf;
+use anyhow::Result;
 use log::info;
 use simple_rng::Rng;
 use std::collections::HashSet;
 
-pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<(), &'static str> {
+pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
     // Create the prefix of the files to write
     let output_file = format!("{}/{}", config.output_dir.display(), config.output_prefix);
 
@@ -99,8 +100,8 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn test_runner() {
-        let mut config = RunConfiguration::build();
+    fn test_runner() -> Result<()> {
+        let mut config = RunConfiguration::build()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         // Because we are building this the wrong way, we need to manually create the output dir
         config.output_dir = PathBuf::from("test");
@@ -113,11 +114,12 @@ mod tests {
         ]);
         run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("test").unwrap();
+        Ok(())
     }
 
     #[test]
-    fn test_runner_files_messages() {
-        let mut config = ConfigBuilder::new();
+    fn test_runner_files_messages() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.produce_fasta = true;
         config.produce_vcf = true;
@@ -132,5 +134,6 @@ mod tests {
         ]);
         run_neat(config, &mut rng).unwrap();
         fs::remove_dir_all("output").unwrap();
+        Ok(())
     }
 }

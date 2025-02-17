@@ -10,6 +10,7 @@ extern crate statrs;
 
 mod utils;
 
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::Parser;
 use log::*;
@@ -21,7 +22,7 @@ use utils::config::{build_config_from_args, read_config_yaml};
 use utils::file_tools::check_parent;
 use utils::runner::run_neat;
 
-fn main() {
+fn main() -> Result<()> {
     info!("Begin processing");
     // parse the arguments from the command line
     let args = cli::Cli::parse();
@@ -39,7 +40,7 @@ fn main() {
         ),
     };
     // Check that the parent dir exists
-    let log_destination = check_parent(&args.log_dest).unwrap();
+    let log_destination = check_parent(&args.log_dest)?;
     // Set up the logger for the run
     CombinedLogger::init(vec![
         TermLogger::new(
@@ -52,10 +53,9 @@ fn main() {
         WriteLogger::new(
             level_filter,
             Config::default(),
-            File::create(log_destination).unwrap(),
+            File::create(log_destination)?,
         ),
-    ])
-    .unwrap();
+    ])?;
     // set up the config struct based on whether there was an input config. Input config
     // overrides any other inputs.
     let config = if !args.config.is_empty() {
@@ -65,12 +65,16 @@ fn main() {
         info!("Using command line arguments.");
         debug!("Command line args: {:?}", &args);
         build_config_from_args(args)
-    };
+    }?;
     // Generate the RNG used for this run. If not we generate a random seed using the current time
     let mut seed_vec: Vec<String> = Vec::new();
     if config.rng_seed.is_some() {
         // Force read it as a string, hopefully
-        let raw_seed = config.rng_seed.clone().unwrap().to_string();
+        let raw_seed = config
+            .rng_seed
+            .clone()
+            .ok_or_else(|| anyhow!("cannot clone seed"))?
+            .to_string();
         for seed_term in raw_seed.split_whitespace() {
             seed_vec.push(seed_term.to_string());
         }
@@ -96,5 +100,4 @@ fn main() {
     let mut rng: Rng = Rng::from_seed(seed_vec);
     // run the generate reads main script
     run_neat(config, &mut rng)
-        .unwrap_or_else(|error| panic!("Neat encountered a problem: {:?}", error))
 }

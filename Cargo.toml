@@ -18,3 +18,4 @@ serde_json = "1.0.114"
 serde = { version = "1.0.197", features = ["derive"] }
 simple_rng = { path = "simple_rng" }
 statrs = "0.17.1"
+anyhow = "1.0.95"

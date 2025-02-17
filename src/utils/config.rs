@@ -4,6 +4,7 @@
 
 use super::cli::Cli;
 use super::file_tools::check_create_dir;
+use anyhow::{anyhow, Result};
 use log::{info, warn};
 use serde_yaml::Value;
 use std::collections::HashMap;
@@ -57,7 +58,7 @@ pub struct RunConfiguration {
 #[allow(dead_code)]
 impl RunConfiguration {
     // The purpose of this function is to redirect you to the ConfigBuilder
-    pub fn build() -> ConfigBuilder {
+    pub fn build() -> Result<ConfigBuilder> {
         ConfigBuilder::new()
     }
 }
@@ -85,8 +86,8 @@ pub struct ConfigBuilder {
 }
 
 impl ConfigBuilder {
-    pub fn new() -> ConfigBuilder {
-        ConfigBuilder {
+    pub fn new() -> Result<Self> {
+        let cb = ConfigBuilder {
             // Setting default values
             reference: None,
             read_len: 150,
@@ -103,17 +104,18 @@ impl ConfigBuilder {
             rng_seed: None,
             overwrite_output: false,
             minimum_mutations: None,
-            output_dir: env::current_dir().unwrap(),
+            output_dir: env::current_dir()?,
             output_prefix: String::from("neat_out"),
-        }
+        };
+        Ok(cb)
     }
 
-    pub fn check_and_print_config(&self) {
+    pub fn check_and_print_config(&self) -> Result<()> {
         // This does a final check of the configuration for valid items. It will print info
         // message of the items, to work as a record and to assist in debugging any issues that
         // come up.
         if self.reference.is_none() {
-            panic!("No reference was specified.")
+            return Err(anyhow!("No reference was specified."));
         }
         info!(
             "Running rusty-neat to generate reads on {} with...",
@@ -140,21 +142,23 @@ impl ConfigBuilder {
                 "Output directory is not a directory: {:?}",
                 self.output_dir.display()
             );
-            check_create_dir(output_path);
+            check_create_dir(output_path)?;
         }
         let file_prefix = format!("{}/{}", self.output_dir.display(), self.output_prefix);
 
         // No point in running if we aren't producing files
         if !(self.produce_fastq | self.produce_fasta | self.produce_vcf | self.produce_bam) {
-            panic!("All file types set to false, no files would be produced.");
+            return Err(anyhow!(
+                "All file types set to false, no files would be produced."
+            ));
         }
 
         if self.paired_ended {
             if self.fragment_mean.is_none() | self.fragment_st_dev.is_none() {
-                panic!(
+                return Err(anyhow!(
                     "Paired ended is set to true, but fragment mean \
                     and standard deviation were not set."
-                );
+                ));
             }
             if self.produce_fastq {
                 info!("\t> fragment mean: {}", self.fragment_mean.unwrap());
@@ -182,6 +186,7 @@ impl ConfigBuilder {
         if self.rng_seed.is_some() {
             info!("Using rng seed: {}", self.rng_seed.clone().unwrap())
         }
+        Ok(())
     }
 
     // Function to build the actual configuration.
@@ -215,143 +220,137 @@ fn generate_error(key: &str, key_type: &str, value: &Value) -> String {
     )
 }
 
-pub fn read_config_yaml(yaml: String) -> RunConfiguration {
+pub fn read_config_yaml(yaml: String) -> Result<RunConfiguration> {
     // Reads an input configuration file from yaml using the serde package. Then sets the parameters
     // based on the inputs. A "." value means to use the default value.
 
     // Opens file for reading
-    let f = fs::File::open(yaml);
-    let file = match f {
-        Ok(l) => l,
-        Err(error) => panic!("Problem reading the config file: {}", error),
-    };
+    let file = fs::File::open(yaml)?;
     // Uses serde_yaml to read the file into a HashMap
-    let scrape_config: HashMap<String, Value> =
-        serde_yaml::from_reader(file).expect("Could not read values");
+    let scrape_config: HashMap<String, Value> = serde_yaml::from_reader(file)?;
     // Create the config builder then update any items from the configuration file in the
     // configuration object and returns it.
-    let mut config_builder = ConfigBuilder::new();
+    let mut config_builder = ConfigBuilder::new()?;
     for (key, value) in scrape_config {
-        match key.as_str() {
-            // Too extra checks needed are for reference. Everything else can be
-            // easily skipped with a value of "."
-            "reference" => {
-                let reference_path = Path::new(value.as_str().unwrap());
+        // Too extra checks needed are for reference. Everything else can be
+        // easily skipped with a value of "."
+        if key == "reference" {
+            if let Some(reference_str) = value.as_str() {
+                let reference_path = Path::new(reference_str);
                 if !reference_path.is_file() {
-                    panic!("Reference file not found: {}", value.as_str().unwrap())
+                    return Err(anyhow!("Reference file not found: {}", reference_str));
                 } else {
-                    // Okay, serde Value is weird for strings
-                    config_builder.reference = value.as_str().unwrap().to_string().into();
+                    config_builder.reference = reference_str.to_string().into();
                 }
+            } else {
+                return Err(anyhow!(
+                    "Expected a string for 'reference', but got: {:?}",
+                    value
+                ));
             }
-            _ => {
-                match &value.as_str() {
-                    Some(".") => continue,
-                    _ => match key.as_str() {
-                        "read_len" => {
-                            config_builder.read_len = value.as_u64().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "integer", &value))
-                            }) as usize
-                        }
-                        "coverage" => {
-                            config_builder.coverage = value.as_u64().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "integer", &value))
-                            }) as usize
-                        }
-                        "mutation_rate" => {
-                            config_builder.mutation_rate = value.as_f64().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "float", &value))
-                            })
-                        }
-                        "ploidy" => {
-                            config_builder.ploidy = value.as_u64().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "integer", &value))
-                            }) as usize
-                        }
-                        "paired_ended" => {
-                            config_builder.paired_ended = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "fragment_mean" => {
-                            config_builder.fragment_mean = value
-                                .as_f64()
-                                .unwrap_or_else(|| {
-                                    panic!("{}", generate_error(&key, "float", &value))
-                                })
-                                .into() // to make it an option
-                        }
-                        "fragment_st_dev" => {
-                            config_builder.fragment_st_dev = value
-                                .as_f64()
-                                .unwrap_or_else(|| {
-                                    panic!("{}", generate_error(&key, "float", &value))
-                                })
-                                .into() // to make it an option
-                        }
-                        "produce_fastq" => {
-                            config_builder.produce_fastq = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "produce_fasta" => {
-                            config_builder.produce_fasta = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "produce_vcf" => {
-                            config_builder.produce_vcf = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "produce_bam" => {
-                            config_builder.produce_bam = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "rng_seed" => {
-                            config_builder.rng_seed = value.as_str().unwrap().to_string().into()
-                            // to make it an option
-                        }
-                        "overwrite_output" => {
-                            config_builder.overwrite_output = value.as_bool().unwrap_or_else(|| {
-                                panic!("{}", generate_error(&key, "boolean", &value))
-                            })
-                        }
-                        "minimum_mutations" => {
-                            config_builder.minimum_mutations =
-                                Some(value.as_u64().unwrap_or_else(|| {
-                                    panic!("{}", generate_error(&key, "Valid integer", &value))
-                                }) as usize)
-                        }
-                        "output_dir" => {
-                            let output_path = value.as_str().unwrap().to_string();
-                            config_builder.output_dir = PathBuf::from(output_path);
-                        }
-                        "output_prefix" => {
-                            config_builder.output_prefix = value.as_str().unwrap().to_string()
-                        }
-                        _ => continue,
-                    },
-                }
+        } else {
+            match &value.as_str() {
+                Some(".") => continue,
+                _ => match key.as_str() {
+                    "read_len" => {
+                        config_builder.read_len = value.as_u64().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "integer", &value))
+                        }) as usize
+                    }
+                    "coverage" => {
+                        config_builder.coverage = value.as_u64().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "integer", &value))
+                        }) as usize
+                    }
+                    "mutation_rate" => {
+                        config_builder.mutation_rate = value
+                            .as_f64()
+                            .unwrap_or_else(|| panic!("{}", generate_error(&key, "float", &value)))
+                    }
+                    "ploidy" => {
+                        config_builder.ploidy = value.as_u64().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "integer", &value))
+                        }) as usize
+                    }
+                    "paired_ended" => {
+                        config_builder.paired_ended = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "fragment_mean" => {
+                        config_builder.fragment_mean = value
+                            .as_f64()
+                            .unwrap_or_else(|| panic!("{}", generate_error(&key, "float", &value)))
+                            .into() // to make it an option
+                    }
+                    "fragment_st_dev" => {
+                        config_builder.fragment_st_dev = value
+                            .as_f64()
+                            .unwrap_or_else(|| panic!("{}", generate_error(&key, "float", &value)))
+                            .into() // to make it an option
+                    }
+                    "produce_fastq" => {
+                        config_builder.produce_fastq = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "produce_fasta" => {
+                        config_builder.produce_fasta = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "produce_vcf" => {
+                        config_builder.produce_vcf = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "produce_bam" => {
+                        config_builder.produce_bam = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "rng_seed" => {
+                        config_builder.rng_seed = value.as_str().unwrap().to_string().into()
+                        // to make it an option
+                    }
+                    "overwrite_output" => {
+                        config_builder.overwrite_output = value.as_bool().unwrap_or_else(|| {
+                            panic!("{}", generate_error(&key, "boolean", &value))
+                        })
+                    }
+                    "minimum_mutations" => {
+                        config_builder.minimum_mutations =
+                            Some(value.as_u64().unwrap_or_else(|| {
+                                panic!("{}", generate_error(&key, "Valid integer", &value))
+                            }) as usize)
+                    }
+                    "output_dir" => {
+                        let output_path = value.as_str().unwrap().to_string();
+                        config_builder.output_dir = PathBuf::from(output_path);
+                    }
+                    "output_prefix" => {
+                        config_builder.output_prefix = value.as_str().unwrap().to_string()
+                    }
+                    _ => continue,
+                },
             }
         }
     }
     let _ = &config_builder.check_and_print_config();
-    config_builder.build()
+    Ok(config_builder.build())
 }
 
-pub fn build_config_from_args(args: Cli) -> RunConfiguration {
+pub fn build_config_from_args(args: Cli) -> Result<RunConfiguration> {
     // Takes in a bunch of args from a clap CLI and builds a config based on that. More CLI options
     // will need additional items entered here. To add them to the config, so they can be implemented.
 
     // Create the ConfigBuilder object with default values
-    let mut config_builder = ConfigBuilder::new();
+    let mut config_builder = ConfigBuilder::new()?;
     // Can't do a run without a reference
     if !args.reference.is_empty() {
         config_builder.reference = args.reference.into();
     } else {
-        panic!("No reference specified");
+        return Err(anyhow!("No reference was specified."));
     }
     // The default value works directly for the config builder and CLI handles the type checking
     config_builder.read_len = args.read_length;
@@ -362,7 +361,7 @@ pub fn build_config_from_args(args: Cli) -> RunConfiguration {
             .expect("Error finding current directory. Please specify --output-dir (-o) option.")
     } else {
         let output_path = Path::new(&args.output_dir);
-        check_create_dir(output_path);
+        check_create_dir(output_path)?;
         config_builder.output_dir = PathBuf::from(output_path);
     };
     // If this is unset, sets the default value of "neat_out" by CLI
@@ -373,7 +372,7 @@ pub fn build_config_from_args(args: Cli) -> RunConfiguration {
         config_builder.minimum_mutations = Some(input_min_muts);
     }
     let _ = &config_builder.check_and_print_config();
-    config_builder.build()
+    Ok(config_builder.build())
 }
 
 #[cfg(test)]
@@ -422,44 +421,48 @@ mod tests {
     }
 
     #[test]
-    fn test_build() {
+    fn test_build() -> Result<()> {
         use super::*;
-        let x = RunConfiguration::build();
-        assert!(x.reference.is_none())
+        let x = RunConfiguration::build()?;
+        assert!(x.reference.is_none());
+        Ok(())
     }
 
     #[test]
-    fn test_read_config_yaml() {
+    fn test_read_config_yaml() -> Result<()> {
         let yaml = String::from("config/neat_test.yml");
-        let test_config = read_config_yaml(yaml);
+        let test_config = read_config_yaml(yaml)?;
         assert_eq!(test_config.reference, "test_data/ecoli.fa".to_string());
         assert_eq!(test_config.coverage, 3);
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_bad_yaml() {
+    fn test_bad_yaml() -> Result<()> {
         let yaml = String::from("fake_file.yml");
-        read_config_yaml(yaml);
+        let er = read_config_yaml(yaml);
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_missing_ref() {
+    fn test_missing_ref() -> Result<()> {
         let yaml = String::from("config/simple_template.yml");
-        read_config_yaml(yaml);
+        let er = read_config_yaml(yaml);
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_creates_out_dir() {
+    fn test_creates_out_dir() -> Result<()> {
         let yaml = String::from("config/neat_test_bad.yml");
-        read_config_yaml(yaml);
+        read_config_yaml(yaml)?;
         assert!(Path::new("fake").is_dir());
-        fs::remove_dir("fake").unwrap()
+        Ok(fs::remove_dir("fake")?)
     }
 
     #[test]
-    fn test_command_line_inputs() {
+    fn test_command_line_inputs() -> Result<()> {
         let args: Cli = Cli {
             config: String::new(),
             reference: String::from("test_data/ecoli.fa"),
@@ -472,29 +475,31 @@ mod tests {
             coverage: 10,
         };
 
-        let test_config = build_config_from_args(args);
-        assert_eq!(test_config.reference, "test_data/ecoli.fa".to_string())
+        let test_config = build_config_from_args(args)?;
+        assert_eq!(test_config.reference, "test_data/ecoli.fa".to_string());
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_bad_config_builder() {
-        let config = ConfigBuilder::new();
-        config.check_and_print_config();
+    fn test_bad_config_builder() -> Result<()> {
+        let config = ConfigBuilder::new()?;
+        let er = config.check_and_print_config();
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_creat_nonexisting_out() {
-        let mut config = ConfigBuilder::new();
+    fn test_creat_nonexisting_out() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.output_dir = PathBuf::from("contig/");
-        config.check_and_print_config();
-        fs::remove_dir("contig").unwrap()
+        config.check_and_print_config()?;
+        fs::remove_dir("contig")?;
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_cl_missing_ref() {
+    fn test_cl_missing_ref() -> Result<()> {
         let args: Cli = Cli {
             config: String::new(),
             reference: String::from(""),
@@ -507,87 +512,96 @@ mod tests {
             coverage: 10,
         };
 
-        build_config_from_args(args);
+        let er = build_config_from_args(args);
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_overwrite_warn() {
-        let mut config = ConfigBuilder::new();
+    fn test_overwrite_warn() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Option::from("test_data/H1N1.fa".to_string());
         config.overwrite_output = true;
-        config.check_and_print_config();
+        config.check_and_print_config()?;
+        Ok(())
     }
 
     #[test]
-    fn test_produce_fastq_messages() {
-        let mut config = ConfigBuilder::new();
+    fn test_produce_fastq_messages() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Option::from("test_data/H1N1.fa".to_string());
         config.paired_ended = true;
         config.fragment_mean = Some(100.0);
         config.fragment_st_dev = Some(10.0);
         // tests first branch of if statement for paired_ended & produce_fastq = true
-        config.check_and_print_config();
+        config.check_and_print_config()?;
         // Checks the alternative pe = true, produce_fastq = false
         config.produce_fastq = false;
         // need to produce at least one file or check will panic
         config.produce_fasta = true;
-        config.check_and_print_config();
+        config.check_and_print_config()?;
+        Ok(())
     }
 
     #[test]
-    fn test_produce_fasta_messages() {
-        let mut config = ConfigBuilder::new();
+    fn test_produce_fasta_messages() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.produce_fasta = true;
-        config.check_and_print_config();
+        config.check_and_print_config()?;
         config.produce_vcf = true;
-        config.check_and_print_config();
+        config.check_and_print_config()?;
         config.produce_bam = true;
-        config.check_and_print_config();
+        config.check_and_print_config()?;
         // If it passes all the checks, we're good.
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_no_files() {
-        let mut config = ConfigBuilder::new();
+    fn test_no_files() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.produce_fastq = false;
-        config.check_and_print_config();
+        let er = config.check_and_print_config();
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_no_frag_mean_or_stdev() {
-        let mut config = ConfigBuilder::new();
+    fn test_no_frag_mean_or_stdev() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         // paired end set to true, by default, fragment mean and st dev are None
         config.paired_ended = true;
-        config.check_and_print_config();
+        let er = config.check_and_print_config();
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_no_frag_mean() {
-        let mut config = ConfigBuilder::new();
+    fn test_no_frag_mean() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.paired_ended = true;
         config.fragment_st_dev = Some(10.0);
-        config.check_and_print_config();
+        let er = config.check_and_print_config();
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_no_stdev() {
-        let mut config = ConfigBuilder::new();
+    fn test_no_stdev() -> Result<()> {
+        let mut config = ConfigBuilder::new()?;
         config.reference = Some("test_data/H1N1.fa".to_string());
         config.paired_ended = true;
         config.fragment_mean = Some(100.0);
-        config.check_and_print_config();
+        let er = config.check_and_print_config();
+        assert!(er.is_err());
+        Ok(())
     }
 
     #[test]
-    fn no_output_dir_given() {
+    fn no_output_dir_given() -> Result<()> {
         let args: Cli = Cli {
             config: String::new(),
             reference: String::from("test_data/H1N1.fa"),
@@ -600,12 +614,13 @@ mod tests {
             coverage: 10,
         };
 
-        let config = build_config_from_args(args);
+        let config = build_config_from_args(args)?;
         assert_eq!(env::current_dir().unwrap().as_path(), config.output_dir);
+        Ok(())
     }
 
     #[test]
-    fn test_minimum_mutations_and_others() {
+    fn test_minimum_mutations_and_others() -> Result<()> {
         let args: Cli = Cli {
             config: String::new(),
             reference: String::from("test_data/H1N1.fa"),
@@ -618,9 +633,10 @@ mod tests {
             coverage: 13,
         };
 
-        let config = build_config_from_args(args);
+        let config = build_config_from_args(args)?;
         assert_eq!(Some(10), config.minimum_mutations);
         assert_eq!(120, config.read_len);
         assert_eq!(13, config.coverage);
+        Ok(())
     }
 }
