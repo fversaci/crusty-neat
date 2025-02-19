@@ -11,6 +11,28 @@ use log::{debug, error, warn};
 use simple_rng::{DiscreteDistribution, Rng};
 use std::collections::HashMap;
 
+/// Mutates a fasta file
+///
+/// # Arguments
+///
+/// * `file_struct` - A hashmap of contig names (keys) and a vector
+///   representing the original sequence.
+/// * `minimum_mutations` - is a usize or None that indicates if there
+///   is a requested minimum. The default is for rusty-neat to allow 0 mutations.
+/// * `rng` - random number generator for the run
+///
+/// # Returns
+///
+/// A tuple with pointers to:
+/// * A hashmap with keys that are contig names and a vector with the
+///   mutated sequence
+/// * A vector of tuples containing the location and alt of each
+///   variant
+///
+/// This function performs a basic calculation (length x mutation rate
+/// +/- a random amount) and chooses that many positions along the
+/// sequence to mutate. It then builds a return string that represents
+/// the altered sequence and stores all the variants.
 pub fn mutate_fasta(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
@@ -19,61 +41,31 @@ pub fn mutate_fasta(
     HashMap<String, Vec<u8>>,
     HashMap<String, Vec<(usize, u8, u8)>>,
 )> {
-    // Takes:
-    // file_struct: a hashmap of contig names (keys) and a vector
-    // representing the reference sequence.
-    // minimum_mutations is a usize or None that indicates if there is a requested minimum.
-    //      The default is for rusty-neat to allow 0 mutations.
-    // ploidy: The number of copies of the genome within an organism's cells
-    // rng: random number generator for the run
-    //
-    // Returns:
-    // A tuple with pointers to:
-    // A hashmap with keys that are contig names and a vector with the mutated sequence
-    // A vector of tuples containing the location and alt of each variant
-    //
-    // This function performs a basic calculation (length x mutation rate +/- a random amount)
-    // and chooses that many positions along the sequence to mutate. It then builds a return
-    // string that represents the altered sequence and stores all the variants.
-    const MUT_RATE: f64 = 0.01; // will update this with something more elaborate later.
-    let mut return_struct: HashMap<String, Vec<u8>> = HashMap::new(); // the mutated sequences
-                                                                      // hashmap with keys of the contig names with a list of positions and alts under the contig.
+    const MUT_RATE: f64 = 0.01;
+    let mut return_struct: HashMap<String, Vec<u8>> = HashMap::new();
     let mut all_variants: HashMap<String, Vec<(usize, u8, u8)>> = HashMap::new();
-    // For each sequence, figure out how many variants it should get and add them
+
     for (name, sequence) in file_struct {
-        // The length of this sequence
         let sequence_length = sequence.len();
         debug!("Sequence {} is {} bp long", name, sequence_length);
-        // Clone the reference to create mutations
-        // Calculate how many mutations to add
-        let mut rough_num_positions: f64 = sequence_length as f64 * MUT_RATE;
-        // Add or subtract a few extra positions.
-        rough_num_positions += {
-            // A random amount up to 10% of the reads
-            let factor: f64 = rng.random() * 0.10;
-            // 25% of the time subtract, otherwise we'll add.
-            let sign: f64 = if rng.gen_bool(0.25) { -1.0 } else { 1.0 };
-            // add or subtract up to 10% of the reads.
-            rough_num_positions + (sign * factor)
-        };
-        let rounded_num_positions = rough_num_positions.round() as usize;
-        // Round the number of positions to the nearest usize.
-        // If mininum_mutations have been entered, we'll use that, else we'll set that to 0.
-        let num_positions;
-        if let Some(min_mut) = minimum_mutations {
-            num_positions = min_mut.max(rounded_num_positions)
-        } else {
-            num_positions = rough_num_positions.round() as usize
-        };
-        // Mutates the sequence, using the original
+        // Calculate the number of mutation positions based on
+        // mutation rate
+        let mut num_positions: f64 = sequence_length as f64 * MUT_RATE;
+        // Introduce random fluctuation to the mutation count
+        let factor: f64 = rng.random() * 0.10;
+        let sign: f64 = if rng.gen_bool(0.25) { -1.0 } else { 1.0 };
+        num_positions += sign * factor;
+        // Ensure the number of mutations meets the minimum threshold if provided
+        let num_positions = minimum_mutations.unwrap_or(0).max(num_positions as usize);
+        // Apply mutations to the sequence
         let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng)?;
-        // Add to the return struct and variants map.
+        // Store the mutated sequence and corresponding mutations
         return_struct
             .entry(name.clone())
             .or_insert(mutated_record.clone());
         all_variants.entry(name.clone()).or_insert(contig_mutations);
     }
-
+    // Return mutated sequences and their mutation details
     Ok((return_struct, all_variants))
 }
 
