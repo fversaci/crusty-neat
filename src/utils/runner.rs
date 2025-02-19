@@ -10,6 +10,19 @@ use log::info;
 use simple_rng::Rng;
 use std::collections::HashSet;
 
+/// The main function that runs the NEAT simulation.
+/// This function will mutate the reference genome, and then produce
+/// the output files
+///
+/// # Arguments
+///
+/// * `config` - The configuration for the run
+/// * `rng` - The random number generator to use
+///
+/// # Returns
+///
+/// * `Result<()>` - A result that will be Ok(()) if the run was
+///   successful
 pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
     // Create the prefix of the files to write
     let output_file = format!("{}/{}", config.output_dir.display(), config.output_prefix);
