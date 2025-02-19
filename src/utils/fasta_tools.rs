@@ -8,15 +8,34 @@ use log::info;
 use std::collections::HashMap;
 use std::io::Write;
 
-pub fn sequence_array_to_string(input_array: &Vec<u8>) -> String {
-    // Converts a sequence vector into a string representing the DNA sequence
-    let mut return_string = String::new();
-    for num in input_array {
-        return_string += &(u8_to_base(*num).to_string());
-    }
-    return_string
+/// Converts a sequence of u8 into a string representing the DNA
+/// sequence.
+///
+/// # Arguments
+///
+///   - `input_array`: a slice of u8 representing the DNA sequence
+///
+/// # Returns
+///
+///   - A string representing the DNA sequence
+pub fn sequence_array_to_string(input_array: &[u8]) -> String {
+    input_array.iter().map(|&num| u8_to_base(num)).collect()
 }
 
+/// Reads a fasta file and returns a hashmap with the contig names as
+/// keys and the sequences as values.
+///
+/// # Arguments
+///
+///   - fasta_path: the path to the fasta file
+///
+/// # Returns
+///
+///   - A tuple with the hashmap of sequences and the order of the
+///     sequences in the file
+///
+/// Errors if the file cannot be read or if the file is not in fasta
+/// format.
 pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<u8>>, Vec<String>)> {
     info!("Reading fasta: {}", fasta_path);
 
@@ -30,9 +49,7 @@ pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<u8>>, Vec<Str
         let l = line?;
         if l.starts_with('>') {
             if !current_key.is_empty() {
-                fasta_map
-                    .entry(current_key.clone())
-                    .or_insert(temp_seq.clone());
+                fasta_map.entry(current_key).or_insert(temp_seq.clone());
             }
             current_key = l
                 .strip_prefix('>')
@@ -46,50 +63,43 @@ pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<u8>>, Vec<Str
     }
 
     // Need to pick up the last one
-    fasta_map
-        .entry(current_key.clone())
-        .or_insert(temp_seq.clone());
+    fasta_map.entry(current_key).or_insert(temp_seq);
     Ok((fasta_map, fasta_order))
 }
 
+/// Writes a hashmap of sequences to a fasta file.
+///
+/// # Arguments
+///
+///   - `fasta_output`: a hashmap with the contig names as keys and the
+///     mutated sequences as values
+///   - `fasta_order`: a vector with the order of the sequences in the
+///     file
+///   - `output_file`: the prefix for the output file name
+///
+/// # Returns
+///
+///   - Nothing
+///
+/// Errors if there is a problem writing the file.
 pub fn write_fasta(
     fasta_output: &HashMap<String, Vec<u8>>,
-    fasta_order: &Vec<String>,
+    fasta_order: &[String],
     overwrite_output: bool,
     output_file: &str,
 ) -> Result<()> {
-    /*
-    Takes:
-        fasta_output: the hashmap of mutated sequences with contig names
-        fasta_order: A vector with the proper order for the fasta elements
-        output_file: the prefix for the output file name
-        ploidy: the number of copies of each chromosome the simulation is using
-    Returns:
-        Errors if there is a problem writing the file, otherwise it returns nothing.
-     */
     // writing fasta output to files
     let mut output_fasta = format!("{}.fasta", output_file);
     let mut outfile = open_file(&mut output_fasta, overwrite_output)?;
+
     for contig in fasta_order {
         let sequence = &fasta_output[contig];
         // Write contig name
-        writeln!(&mut outfile, ">{}", contig)?;
+        writeln!(outfile, ">{}", contig)?;
         // write sequences[ploid] to this_fasta
-        let mut i = 0;
-        let sequence_to_write: &Vec<u8> = sequence;
-        while i < sequence_to_write.len() {
-            let mut line = String::new();
-            let mut max: usize = 70;
-            let this_length: usize = sequence_to_write[i..].len();
-            // If we don't have 70 characters, write out whatever is left.
-            if this_length < 70 {
-                max = this_length
-            }
-            for j in 0..max {
-                line += &(u8_to_base(sequence_to_write[i + j]).to_string());
-            }
-            writeln!(&mut outfile, "{}", line)?;
-            i += 70;
+        for chunk in sequence.chunks(70) {
+            let line: String = chunk.iter().map(|&b| u8_to_base(b)).collect();
+            writeln!(outfile, "{}", line)?;
         }
     }
     Ok(())
