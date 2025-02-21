@@ -23,6 +23,8 @@ use utils::config::{build_config_from_args, read_config_yaml};
 use utils::file_tools::check_parent;
 use utils::runner::run_neat;
 
+/// Create a random number generator from a seed string. If no seed is provided
+/// we generate a random seed.
 pub fn create_rng(seed: Option<&str>) -> StdRng {
     let seed = seed
         .map(|s| {
@@ -35,6 +37,8 @@ pub fn create_rng(seed: Option<&str>) -> StdRng {
     StdRng::seed_from_u64(seed)
 }
 
+/// Main function for the program. This function parses the command
+/// line arguments and then runs the main script for generating reads.
 fn main() -> Result<()> {
     info!("Begin processing");
     // parse the arguments from the command line
