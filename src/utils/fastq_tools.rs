@@ -1,7 +1,7 @@
 // This library writes either single ended or paired-ended fastq files.
 
 use anyhow::Result;
-use simple_rng::Rng;
+use rand::Rng;
 use std::fs;
 use std::io::Write;
 
@@ -31,14 +31,14 @@ fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
     rev_comp
 }
 
-pub fn write_fastq(
+pub fn write_fastq<R: Rng>(
     fastq_filename: &str,
     overwrite_output: bool,
     paired_ended: bool,
     dataset: Vec<&Vec<u8>>,
     dataset_order: Vec<usize>,
     quality_score_model: QualityScoreModel,
-    rng: &mut Rng,
+    rng: &mut R,
 ) -> Result<()> {
     // Takes:
     // fastq_filename: prefix for the output fastq files.
@@ -123,6 +123,7 @@ fn quality_scores_to_str(array: Vec<u32>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::create_rng;
     use std::path::Path;
 
     #[test]
@@ -154,11 +155,7 @@ mod tests {
         let paired_ended = false;
         let seq1 = vec![0, 0, 0, 0, 1, 1, 1, 1];
         let seq2 = vec![2, 2, 2, 2, 3, 3, 3, 3];
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         let dataset = vec![&seq1, &seq2];
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();
@@ -187,11 +184,7 @@ mod tests {
         let paired_ended = true;
         let seq1 = vec![0, 0, 0, 0, 1, 1, 1, 1];
         let seq2 = vec![2, 2, 2, 2, 3, 3, 3, 3];
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         let dataset = vec![&seq1, &seq2];
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();

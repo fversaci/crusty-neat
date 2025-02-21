@@ -7,7 +7,8 @@ use super::read_models::read_quality_score_model_json;
 use super::vcf_tools::write_vcf;
 use anyhow::Result;
 use log::info;
-use simple_rng::Rng;
+use rand::seq::SliceRandom;
+use rand::Rng;
 use std::collections::HashSet;
 
 /// The main function that runs the NEAT simulation.
@@ -23,7 +24,7 @@ use std::collections::HashSet;
 ///
 /// * `Result<()>` - A result that will be Ok(()) if the run was
 ///   successful
-pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
+pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     // Create the prefix of the files to write
     let output_file = format!("{}/{}", config.output_dir.display(), config.output_prefix);
 
@@ -84,7 +85,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
         info!("Shuffling output fastq data");
         let outsets: Vec<&Vec<u8>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
-        rng.shuffle(&mut outsets_order);
+        outsets_order.shuffle(rng);
 
         info!("Writing fastq");
         write_fastq(
@@ -105,6 +106,7 @@ pub fn run_neat(config: RunConfiguration, rng: &mut Rng) -> Result<()> {
 mod tests {
     use super::super::config::ConfigBuilder;
     use super::*;
+    use crate::create_rng;
     use std::fs;
     use std::path::PathBuf;
 
@@ -116,11 +118,7 @@ mod tests {
         config.output_dir = PathBuf::from("test");
         fs::create_dir("test")?;
         let config = config.build()?;
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         run_neat(config, &mut rng)?;
         fs::remove_dir_all("test")?;
         Ok(())
@@ -136,11 +134,7 @@ mod tests {
         config.output_dir = PathBuf::from("output");
         fs::create_dir("output")?;
         let config = config.build()?;
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         run_neat(config, &mut rng)?;
         fs::remove_dir_all("output")?;
         Ok(())

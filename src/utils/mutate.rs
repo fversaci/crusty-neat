@@ -3,13 +3,12 @@
 // mutations introduced
 //
 // mutate_sequence adds actual mutations to the fasta sequence
-extern crate simple_rng;
 
 use super::nucleotides::NucModel;
 use anyhow::{anyhow, Result};
-use log::{debug, error, warn};
-use simple_rng::{DiscreteDistribution, Rng};
-use std::collections::HashMap;
+use log::{debug, error};
+use rand::Rng;
+use std::collections::{HashMap, HashSet};
 
 /// Mutates a fasta file
 ///
@@ -33,10 +32,10 @@ use std::collections::HashMap;
 /// +/- a random amount) and chooses that many positions along the
 /// sequence to mutate. It then builds a return string that represents
 /// the altered sequence and stores all the variants.
-pub fn mutate_fasta(
+pub fn mutate_fasta<R: Rng>(
     file_struct: &HashMap<String, Vec<u8>>,
     minimum_mutations: Option<usize>,
-    rng: &mut Rng,
+    rng: &mut R,
 ) -> Result<(
     HashMap<String, Vec<u8>>,
     HashMap<String, Vec<(usize, u8, u8)>>,
@@ -52,8 +51,8 @@ pub fn mutate_fasta(
         // mutation rate
         let mut num_positions: f64 = sequence_length as f64 * MUT_RATE;
         // Introduce random fluctuation to the mutation count
-        let factor: f64 = rng.random() * 0.10;
-        let sign: f64 = if rng.gen_bool(0.25) { -1.0 } else { 1.0 };
+        let factor: f64 = rng.random_range(0.0..0.10);
+        let sign: f64 = if rng.random_bool(0.25) { -1.0 } else { 1.0 };
         num_positions += sign * factor;
         // Ensure the number of mutations meets the minimum threshold if provided
         let num_positions = minimum_mutations.unwrap_or(0).max(num_positions as usize);
@@ -69,53 +68,42 @@ pub fn mutate_fasta(
     Ok((return_struct, all_variants))
 }
 
-fn mutate_sequence(
+/// This function takes a vector of u8's and mutates a few positions
+/// at random. It returns the mutated sequence and a list of tuples
+/// with the position and the alts of the SNPs.
+///
+/// # Arguments
+///
+/// * `sequence` - A vector representing the original sequence.
+/// * `num_positions` - The number of mutations to add to this
+///   sequence.
+/// * `rng` - random number generator for the run
+///
+/// # Returns
+///
+/// A tuple with pointers to:
+/// * A vector representing the mutated sequence
+/// * A vector of tuples containing the location, alt and ref of each
+///   variant
+fn mutate_sequence<R: Rng>(
     sequence: &[u8],
-    mut num_positions: usize,
-    rng: &mut Rng,
+    num_positions: usize,
+    rng: &mut R,
 ) -> Result<(Vec<u8>, Vec<(usize, u8, u8)>)> {
-    // Takes:
-    // sequence: A u8 vector representing a sequence of DNA
-    // num_positions: The number of mutations to add to this sequence
-    // rng: random number generator for the run
-    //
-    // returns a tuple with:
-    // Vec<u8> is the sequence itself
-    // Vec(usize, u8, u8) is the position of the snp and the alt and ref alleles for that snp.
-    //
-    // Takes a vector of u8's and mutate a few positions at random. Returns the mutated sequence and
-    // a list of tuples with the position and the alts of the SNPs.
     debug!("Adding {} mutations", num_positions);
     let mut mutated_record = sequence.to_owned();
-    // Randomly select num_positions from positions, weighted by gc bias and whatever. For now
-    // all he weights are just equal.
-    let weights = vec![1.0; mutated_record.len()];
-    // find all non n positions. This gives us a vector of valid indexes. We also build the weighted
-    // vector that corresponds to our non-n positions
-    let mut non_n_positions: Vec<usize> = Vec::with_capacity(sequence.len());
-    let mut pared_weights: Vec<f64> = Vec::with_capacity(sequence.len());
-    for (index, base) in mutated_record.iter().enumerate() {
-        if *base != 4 {
-            pared_weights.push(weights[index]);
-            non_n_positions.push(index);
+    let mut indexes_to_mutate: HashSet<usize> = HashSet::new();
+    // choose num_positions distinct indexes to mutate
+    while indexes_to_mutate.len() < num_positions {
+        let index = rng.random_range(0..sequence.len());
+        if mutated_record[index] == 4 {
+            continue;
         }
-    }
-
-    // create the distribution
-    let dist = DiscreteDistribution::new(&pared_weights, false);
-    // now choose a random selection of num_positions without replacement
-    let mut indexes_to_mutate: Vec<usize> = Vec::new();
-    if num_positions > non_n_positions.len() {
-        warn!("Mutating all positions in a sequence (this seems like it shouldn't happen)");
-        num_positions = non_n_positions.len();
-    }
-    for _ in 0..num_positions {
-        let pos = non_n_positions[dist.sample(rng)];
-        indexes_to_mutate.push(pos);
+        indexes_to_mutate.insert(index);
     }
     // Build the default mutation model
     // todo incorporate custom models
-    let nucleotide_mutation_model = NucModel::new();
+    let nucleotide_mutation_model = NucModel::new()?;
     // Will hold the variants added to this sequence
     let mut sequence_variants: Vec<(usize, u8, u8)> = Vec::new();
     // for each index, picks a new base
@@ -123,9 +111,10 @@ fn mutate_sequence(
         // remember the reference for later.
         let reference_base = sequence[index];
         // pick a new base and assign the position to it.
-        mutated_record[index] = nucleotide_mutation_model.choose_new_nuc(reference_base, rng);
-        // This check simply ensures that our model actually mutated the base.
-        if mutated_record[index] == reference_base {
+        mutated_record[index] = nucleotide_mutation_model.choose_new_nuc(reference_base, rng)?;
+        // This check, only run in debugging mode, ensures that the
+        // model actually mutated the base.
+        if cfg!(debug_assertions) && mutated_record[index] == reference_base {
             error!("Need to check the code choosing nucleotides");
             return Err(anyhow!(
                 "BUG: Mutation model failed to mutate the base. This should not happen."
@@ -134,22 +123,20 @@ fn mutate_sequence(
         // add the location and alt base for the variant
         sequence_variants.push((index, mutated_record[index], reference_base))
     }
+
     Ok((mutated_record, sequence_variants))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::create_rng;
 
     #[test]
     fn test_mutate_sequence() -> Result<()> {
         let seq1: Vec<u8> = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
         let num_positions = 2;
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         let mutant = mutate_sequence(&seq1, num_positions, &mut rng)?;
         assert_eq!(mutant.0.len(), seq1.len());
         assert!(!mutant.1.is_empty());
@@ -163,11 +150,7 @@ mod tests {
         let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
         let file_struct: HashMap<String, Vec<u8>> =
             HashMap::from([("chr1".to_string(), seq.clone())]);
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         let mutations = mutate_fasta(&file_struct, Some(1), &mut rng)?;
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
@@ -185,11 +168,7 @@ mod tests {
         let file_struct: HashMap<String, Vec<u8>> =
             HashMap::from([("chr1".to_string(), seq.clone())]);
         // if a random mutation suddenly pops up in a build, it's probably the seed for this.
-        let mut rng = Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         let mutations = mutate_fasta(&file_struct, None, &mut rng)?;
         assert!(mutations.0.contains_key("chr1"));
         assert!(mutations.1.contains_key("chr1"));
