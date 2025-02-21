@@ -15,16 +15,6 @@ use rand::Rng;
 /// This defines the relationship between the 4 possible nucleotides
 /// in DNA and a simple u8 numbering system. Everything that isn't a
 /// recognized base is a 4.  Note that NEAT ignores soft masking.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(base_to_u8('A'), 0);
-/// assert_eq!(base_to_u8('C'), 1);
-/// assert_eq!(base_to_u8('G'), 2);
-/// assert_eq!(base_to_u8('T'), 3);
-/// assert_eq!(base_to_u8('N'), 4);
-/// ```
 pub fn base_to_u8(char_of_interest: char) -> u8 {
     match char_of_interest {
         'A' | 'a' => 0,
@@ -37,16 +27,6 @@ pub fn base_to_u8(char_of_interest: char) -> u8 {
 
 /// Canonical conversion from base u8 representation back into the
 /// character. No attempt to preserve or display any soft masking.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(u8_to_base(0), 'A');
-/// assert_eq!(u8_to_base(1), 'C');
-/// assert_eq!(u8_to_base(2), 'G');
-/// assert_eq!(u8_to_base(3), 'T');
-/// assert_eq!(u8_to_base(4), 'N');
-/// ```
 pub fn u8_to_base(nuc_num: u8) -> char {
     match nuc_num {
         0 => 'A',
@@ -72,8 +52,8 @@ pub struct NucModel {
 }
 
 impl NucModel {
+    /// Default mutation model based on the original from NEAT 2.0
     pub fn new() -> Result<Self> {
-        // Default mutation model based on the original from NEAT 2.0
         Ok(Self {
             a: WeightedIndex::new(vec![0, 17, 69, 14])?,
             c: WeightedIndex::new(vec![16, 0, 17, 67])?,
@@ -82,10 +62,11 @@ impl NucModel {
         })
     }
 
-    // todo, once we have numbers we can implement this.
+    /// Create a new NucModel from a vector of vectors of u32s
+    /// The outer vector should have 4 vectors of 4 u32s each
+    /// representing the weights for mutating from ACGT to ACGT
+    /// in that order.
     pub fn from(weights: Vec<Vec<u32>>) -> Result<Self> {
-        // Supply a vector of 4 vectors that define the mutation chance
-        // from the given base to the other 4 bases.
         // First some safety checks. This should be a 4x4 matrix defining mutation from
         // ACGT (top -> down) to ACGT (left -> right)
         if weights.len() != 4 {
@@ -104,6 +85,7 @@ impl NucModel {
         })
     }
 
+    /// Given a base, choose a new base based on the weights in the model
     pub fn choose_new_nuc<R: Rng>(&self, base: u8, rng: &mut R) -> Result<u8> {
         // Pick the weights list for the base that was input
         let dist = match base {
@@ -126,6 +108,24 @@ impl NucModel {
 mod tests {
     use super::*;
     use crate::create_rng;
+
+    #[test]
+    fn test_base_to_u8() {
+        assert_eq!(base_to_u8('A'), 0);
+        assert_eq!(base_to_u8('C'), 1);
+        assert_eq!(base_to_u8('G'), 2);
+        assert_eq!(base_to_u8('T'), 3);
+        assert_eq!(base_to_u8('N'), 4);
+    }
+
+    #[test]
+    fn test_u8_to_base() {
+        assert_eq!(u8_to_base(0), 'A');
+        assert_eq!(u8_to_base(1), 'C');
+        assert_eq!(u8_to_base(2), 'G');
+        assert_eq!(u8_to_base(3), 'T');
+        assert_eq!(u8_to_base(4), 'N');
+    }
 
     #[test]
     fn test_nuc_model_from_weights() -> Result<()> {
