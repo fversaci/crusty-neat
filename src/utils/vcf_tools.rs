@@ -3,7 +3,8 @@ extern crate log;
 use super::file_tools::open_file;
 use super::nucleotides::u8_to_base;
 use anyhow::{anyhow, Result};
-use simple_rng::Rng;
+use rand::seq::index::sample;
+use rand::Rng;
 use std::collections::HashMap;
 use std::io::Write;
 
@@ -22,14 +23,14 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
         .to_string())
 }
 
-pub fn write_vcf(
+pub fn write_vcf<R: Rng>(
     variant_locations: &HashMap<String, Vec<(usize, u8, u8)>>,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &str,
     overwrite_output: bool,
     output_file_prefix: &str,
-    rng: &mut Rng,
+    rng: &mut R,
 ) -> Result<()> {
     /*
     Takes:
@@ -98,25 +99,25 @@ pub fn write_vcf(
             // If we're going to mutate more than one ploid (i.e. homozygous
             // for diploid organisms), we must add it to the list.
             let mut genotype: Vec<usize> = vec![0; ploidy];
-            // We need to enumerate the index list for the genotype
-            let ploid_index: Vec<usize> = (0..ploidy).collect();
             // By default we'll assume heterozygous (only on one ploid).
             let mut num_ploids: usize = 1;
-            let is_multiploid = rng.gen_bool(0.001);
+            let is_multiploid = rng.random_bool(0.001);
             // If ploidy is only 1, then it doesn't matter
             if is_multiploid && ploidy > 1 {
-                // Mod a random int by ploidy and add to 1 (since we are modifying at least one
-                // copy). For example, with a ploidy of 2 the right term will produce either
-                // 0 or 1, so we modify either 1 or 2 copies.
-                num_ploids = 1 + rng.rand_u64() as usize % ploidy;
+                // Mod a random int by ploidy and add to 1 (since we
+                // are modifying at least one copy). For example, with
+                // a ploidy of 2 the right term will produce either 0
+                // or 1, so we modify either 1 or 2 copies.
+                num_ploids = rng.random_range(1..=ploidy);
             }
-            for _ in 0..num_ploids {
-                // for each ploid that has the mutation, change one random
-                // genotype to 1, indicating the mutation is on that copy.
-                genotype[rng.choose(&ploid_index)] = 1
+            // for each ploid that has the mutation, change one random
+            // genotype to 1, indicating the mutation is on that copy.
+            for i in sample(rng, ploidy, num_ploids) {
+                genotype[i] = 1;
             }
-            // Format the output line. Any fields without data will be a simple period. Quality
-            // is set to 37 for all these variants.
+            // Format the output line. Any fields without data will be
+            // a simple period. Quality is set to 37 for all these
+            // variants.
             let line = format!(
                 "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
                 contig,
@@ -135,6 +136,7 @@ pub fn write_vcf(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::create_rng;
     use std::fs;
     use std::path::Path;
 
@@ -153,11 +155,7 @@ mod tests {
         let reference_path = "/fake/path/to/H1N1.fa";
         let overwrite_output = false;
         let output_file_prefix = "test";
-        let mut rng = simple_rng::Rng::from_seed(vec![
-            "Hello".to_string(),
-            "Cruel".to_string(),
-            "World".to_string(),
-        ]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
         write_vcf(
             &variant_locations,
             &fasta_order,

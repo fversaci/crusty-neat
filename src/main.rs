@@ -4,23 +4,36 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
-extern crate simple_rng;
 extern crate simplelog;
 extern crate statrs;
 
 mod utils;
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
 use clap::Parser;
 use log::*;
-use simple_rng::Rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use simplelog::*;
 use std::fs::File;
+use std::hash::Hash;
+use std::hash::{DefaultHasher, Hasher};
 use utils::cli;
 use utils::config::{build_config_from_args, read_config_yaml};
 use utils::file_tools::check_parent;
 use utils::runner::run_neat;
+
+pub fn create_rng(seed: Option<&str>) -> StdRng {
+    let seed = seed
+        .map(|s| {
+            let mut hasher = DefaultHasher::new();
+            s.hash(&mut hasher);
+            hasher.finish()
+        })
+        .unwrap_or_else(rand::random);
+
+    StdRng::seed_from_u64(seed)
+}
 
 fn main() -> Result<()> {
     info!("Begin processing");
@@ -68,38 +81,13 @@ fn main() -> Result<()> {
         debug!("Command line args: {:?}", &args);
         build_config_from_args(args)
     }?;
-    // Generate the RNG used for this run. If not we generate a random seed using the current time
-    let mut seed_vec: Vec<String> = Vec::new();
-    if config.rng_seed.is_some() {
-        // Force read it as a string, hopefully
-        let raw_seed = config
-            .rng_seed
-            .clone()
-            .ok_or_else(|| anyhow!("cannot clone seed"))?
-            .to_string();
-        for seed_term in raw_seed.split_whitespace() {
-            seed_vec.push(seed_term.to_string());
-        }
-        info!(
-            "Seed string to regenerate these exact results: {}",
-            raw_seed
-        );
-    } else {
-        // since no seed was provided, we'll use the datetime stamp
-        info!(
-            "No rng seed provided, using timestamp (and space-separated list of words with simple \
-            characters will also work as a key)"
-        );
-        let timestamp = Utc::now().format("%Y %m %d %H %M %S %f").to_string();
-        for item in timestamp.split_whitespace() {
-            seed_vec.push(item.to_string());
-        }
-        info!(
-            "Seed string to regenerate these exact results: {}",
-            timestamp
-        );
+    // Generate the RNG used for this run. If not we generate a random
+    // seed using the current time
+    let seed = config.rng_seed.as_deref();
+    let mut rng = create_rng(seed);
+    if let Some(sd) = seed {
+        info!("Seed string to regenerate these exact results: {}", sd);
     }
-    let mut rng: Rng = Rng::from_seed(seed_vec);
     // run the generate reads main script
     run_neat(config, &mut rng)
 }
