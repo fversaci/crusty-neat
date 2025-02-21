@@ -8,11 +8,17 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::io::Write;
 
+/// Converts a vector of 0s and 1s representing genotype to a standard
+/// VCF genotype string.
+///
+/// # Arguments
+///
+/// * `genotype` - A vector of 0s and 1s representing genotype.
+///
+/// # Returns
+///
+/// Returns a string representing the genotype in VCF format.
 fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
-    /*
-    Converts a vector of 0s and 1s representing genotype to a standard
-    vcf genotype string.
-     */
     let mut geno_string = String::new();
     for ploid in genotype {
         geno_string += &format!("{}/", ploid)
@@ -23,6 +29,26 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
         .to_string())
 }
 
+/// Processes variant data and writes output files.
+///
+/// # Arguments
+///
+/// * `variant_locations` - A map where keys are contig names, and
+///   values are lists of variants in that contig. Each variant is
+///   represented as a tuple of `(position, alt base, ref base)`.
+/// * `fasta_order` - A vector of contig names in the order they
+///   appear in the reference FASTA.
+/// * `ploidy` - The number of copies of each chromosome present in
+///   the organism.
+/// * `reference_path` - The path to the reference file that this VCF
+///   is showing variants from.
+/// * `output_file_prefix` - The directory path and filename prefix
+///   for output files.
+/// * `rng` - A random number generator for this run.
+///
+/// # Returns
+///
+/// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
     variant_locations: &HashMap<String, Vec<(usize, u8, u8)>>,
     fasta_order: &Vec<String>,
@@ -32,18 +58,6 @@ pub fn write_vcf<R: Rng>(
     output_file_prefix: &str,
     rng: &mut R,
 ) -> Result<()> {
-    /*
-    Takes:
-        variant_locations: A map of contig names keyed to lists of variants in that contig
-            consisting of a tuple of (position, alt base, ref base).
-        fasta_order: A vector of contig names in the order of the reference fasta.
-        ploidy: The number of copies of each chromosome present in the organism
-        reference_path: The location of the reference file this vcf is showing variants from.
-        output_file_prefix: The path to the directory and the prefix to use for filenames
-        rng: A random number generator for this run
-    Result:
-        Throws and error if there's a problem, or else returns nothing.
-     */
     // set the filename of the output vcf
     let mut filename = format!("{}.vcf", output_file_prefix);
     let mut outfile = open_file(&mut filename, overwrite_output)?;
