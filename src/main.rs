@@ -40,9 +40,9 @@ pub fn create_rng(seed: Option<&str>) -> StdRng {
 /// Main function for the program. This function parses the command
 /// line arguments and then runs the main script for generating reads.
 fn main() -> Result<()> {
-    info!("Begin processing");
     // parse the arguments from the command line
     let args = cli::Cli::parse();
+
     // log filter
     let level_filter = match args.log_level.to_lowercase().as_str() {
         "trace" => LevelFilter::Trace,
@@ -58,8 +58,10 @@ fn main() -> Result<()> {
             ))
         }
     };
+
     // Check that the parent dir exists
     let log_destination = check_parent(&args.log_dest)?;
+
     // Set up the logger for the run
     CombinedLogger::init(vec![
         TermLogger::new(
@@ -68,15 +70,17 @@ fn main() -> Result<()> {
             TerminalMode::Stdout,
             ColorChoice::Always,
         ),
-        SimpleLogger::new(LevelFilter::Trace, Config::default()),
         WriteLogger::new(
             level_filter,
             Config::default(),
             File::create(log_destination)?,
         ),
     ])?;
-    // set up the config struct based on whether there was an input config. Input config
-    // overrides any other inputs.
+
+    info!("Begin processing");
+
+    // set up the config struct based on whether there was an input
+    // config. Input config overrides any other inputs.
     let config = if !args.config.is_empty() {
         info!("Using Configuration file input: {}", &args.config);
         read_config_yaml(args.config)
@@ -85,13 +89,15 @@ fn main() -> Result<()> {
         debug!("Command line args: {:?}", &args);
         build_config_from_args(args)
     }?;
-    // Generate the RNG used for this run. If not we generate a random
-    // seed using the current time
+
+    // Generate the RNG used for this run
     let seed = config.rng_seed.as_deref();
     let mut rng = create_rng(seed);
+
     if let Some(sd) = seed {
         info!("Seed string to regenerate these exact results: {}", sd);
     }
-    // run the generate reads main script
+
+    // Run the main script
     run_neat(config, &mut rng)
 }
