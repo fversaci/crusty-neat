@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 use rand::Rng;
-use std::fs;
 use std::io::Write;
 
 use super::fasta_tools::sequence_array_to_string;
@@ -63,65 +62,53 @@ pub fn write_fastq<R: Rng>(
     rng: &mut R,
 ) -> Result<()> {
     // The prefix for read names. Reads are numbered in output order.
-    let name_prefix = "neat_generated_".to_string();
-    let mut filename1 = String::from(fastq_filename) + "_r1.fastq";
-    // open the file and append lines
+    let name_prefix = "neat_generated_";
+    let mut filename1 = format!("{}_r1.fastq", fastq_filename);
     let mut outfile1 = open_file(&mut filename1, overwrite_output)?;
-    // setting up pairend ended reads For single ended reads, this
-    // will go unused.
-    let mut filename2 = String::from(fastq_filename) + "_r2.fastq";
-    // open the second file and append lines
-    let mut outfile2 = open_file(&mut filename2, overwrite_output)?;
-    // write sequences. Orderd index is used for numbering, while
+    // Setting up pairend ended reads. For single ended reads,
+    // we have outfile2 = None
+    let mut outfile2 = if paired_ended {
+        let mut filename2 = format!("{}_r2.fastq", fastq_filename);
+        Some(open_file(&mut filename2, overwrite_output)?)
+    } else {
+        None
+    };
+
+    // Write sequences. Ordered index is used for numbering, while
     // read_index is from the shuffled index array from a previous
-    // step
-    for (order_index, read_index) in dataset_order.iter().enumerate() {
-        let sequence = dataset[*read_index].clone();
-        // This assumes that the sequence length is the correct length
-        // at this point.
-        let read_length = sequence.len() as u32;
-        // Need to convert the raw scores to a string
-        let quality_scores =
-            quality_score_model.generate_quality_scores(read_length as usize, rng)?;
+    // step.
+    for (order_index, &read_index) in dataset_order.iter().enumerate() {
+        let sequence = dataset[read_index];
+        let read_length = sequence.len();
+
+        // Generate quality scores for read1
+        let quality_scores = quality_score_model.generate_quality_scores(read_length, rng)?;
+
         // sequence name
-        writeln!(
-            &mut outfile1,
-            "@{}{}/1",
-            name_prefix.clone(),
-            order_index + 1
-        )?;
+        writeln!(outfile1, "@{}{}/1", name_prefix, order_index + 1)?;
         // Array as a string
-        writeln!(&mut outfile1, "{}", sequence_array_to_string(&sequence))?;
+        writeln!(outfile1, "{}", sequence_array_to_string(sequence))?;
         // The stupid plus sign
-        writeln!(&mut outfile1, "+")?;
+        writeln!(outfile1, "+")?;
         // Qual score of all F's for the whole thing.
-        writeln!(&mut outfile1, "{}", quality_scores_to_str(quality_scores))?;
-        if paired_ended {
-            // Need a quality score for this read as well
-            let quality_scores =
-                quality_score_model.generate_quality_scores(read_length as usize, rng)?;
+        writeln!(outfile1, "{}", quality_scores_to_str(quality_scores))?;
+
+        // Handle paired-end reads
+        if let Some(ref mut outfile2) = outfile2 {
+            let quality_scores = quality_score_model.generate_quality_scores(read_length, rng)?;
+
+            let rev_comp_sequence = reverse_complement(sequence);
             // sequence name
-            writeln!(
-                &mut outfile2,
-                "@{}{}/2",
-                name_prefix.clone(),
-                order_index + 1
-            )?;
+            writeln!(outfile2, "@{}{}/2", name_prefix, order_index + 1)?;
             // Array as a string
-            writeln!(
-                &mut outfile2,
-                "{}",
-                sequence_array_to_string(&reverse_complement(&sequence))
-            )?;
+            writeln!(outfile2, "{}", sequence_array_to_string(&rev_comp_sequence))?;
             // The stupid plus sign
-            writeln!(&mut outfile2, "+")?;
+            writeln!(outfile2, "+")?;
             // Qual score of all F's for the whole thing.
-            writeln!(&mut outfile2, "{}", quality_scores_to_str(quality_scores))?;
+            writeln!(outfile2, "{}", quality_scores_to_str(quality_scores))?;
         }
     }
-    if !paired_ended {
-        fs::remove_file(filename2)?;
-    }
+
     Ok(())
 }
 
@@ -138,6 +125,7 @@ fn quality_scores_to_str(array: Vec<u32>) -> String {
 mod tests {
     use super::*;
     use crate::create_rng;
+    use std::fs;
     use std::path::Path;
 
     #[test]
