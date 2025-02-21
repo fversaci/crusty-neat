@@ -9,9 +9,9 @@ use super::fasta_tools::sequence_array_to_string;
 use super::file_tools::open_file;
 use super::quality_scores::QualityScoreModel;
 
+/// Complement function for DNA nucleotides.
 fn complement(nucleotide: u8) -> u8 {
     // 0 = A, 1 = C, 2 = G, 3 = T,
-    // matches with the complement of each nucleotide.
     match nucleotide {
         0 => 3,
         1 => 2,
@@ -21,8 +21,8 @@ fn complement(nucleotide: u8) -> u8 {
     }
 }
 
+/// Reverse complement function for DNA sequences.
 fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
-    // Returns the reverse complement of a vector of u8's representing a DNA sequence.
     let length = sequence.len();
     let mut rev_comp = Vec::new();
     for i in (0..length).rev() {
@@ -31,6 +31,28 @@ fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
     rev_comp
 }
 
+/// Writes FASTQ files based on the provided dataset.
+///
+/// # Arguments
+///
+/// * `fastq_filename` - The prefix for the output FASTQ files.
+/// * `overwrite_output` - A boolean flag to enable or disable overwriting
+///   existing files.
+/// * `paired_ended` - A boolean flag to enable or disable paired-end mode.
+/// * `dataset` - A list of `Vec<u8>` representing DNA sequences.
+/// * `dataset_order` - A list of indices to order the dataset.
+/// * `quality_score_model` - A `QualityScoreModel` object to generate
+///   quality scores.
+/// * `rng` - A random number generator.
+///
+/// # Returns
+///
+/// Returns `()` if successful. Throws an error if there is a problem.
+///
+/// # Notes
+///
+/// Currently, only a single R1 file is written, but future versions
+/// will support both R1 and R2 files.
 pub fn write_fastq<R: Rng>(
     fastq_filename: &str,
     overwrite_output: bool,
@@ -40,32 +62,23 @@ pub fn write_fastq<R: Rng>(
     quality_score_model: QualityScoreModel,
     rng: &mut R,
 ) -> Result<()> {
-    // Takes:
-    // fastq_filename: prefix for the output fastq files.
-    // paired_ended: boolean to set paired ended mode on or off.
-    // dataset: List of u8 vectors representing dna sequences.
-    // returns:
-    // Error if there is a problem or else nothing.
-    //
-    // Writes fastq files. At the moment, it only writes out single r1 file, but will eventually write
-    // out r1 and r2 files.
-
-    // name_prefix is for the prefix for the read names. Reads are numbered in output order
-    // (Although this feature is currently untested and unknown).
-    // (May need sorting.)
+    // The prefix for read names. Reads are numbered in output order.
     let name_prefix = "neat_generated_".to_string();
     let mut filename1 = String::from(fastq_filename) + "_r1.fastq";
     // open the file and append lines
     let mut outfile1 = open_file(&mut filename1, overwrite_output)?;
-    // setting up pairend ended reads For single ended reads, this will go unused.
+    // setting up pairend ended reads For single ended reads, this
+    // will go unused.
     let mut filename2 = String::from(fastq_filename) + "_r2.fastq";
     // open the second file and append lines
     let mut outfile2 = open_file(&mut filename2, overwrite_output)?;
-    // write sequences. Orderd index is used for numbering, while read_index is from the shuffled
-    // index array from a previous step
+    // write sequences. Orderd index is used for numbering, while
+    // read_index is from the shuffled index array from a previous
+    // step
     for (order_index, read_index) in dataset_order.iter().enumerate() {
         let sequence = dataset[*read_index].clone();
-        // This assumes that the sequence length is the correct length at this point.
+        // This assumes that the sequence length is the correct length
+        // at this point.
         let read_length = sequence.len() as u32;
         // Need to convert the raw scores to a string
         let quality_scores =
@@ -112,6 +125,7 @@ pub fn write_fastq<R: Rng>(
     Ok(())
 }
 
+/// Converts a vector of quality scores to a string.
 fn quality_scores_to_str(array: Vec<u32>) -> String {
     let mut score_text = String::new();
     for score in array {
