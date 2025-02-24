@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+pub mod distributions;
 pub mod fasta_tools;
 pub mod fastq_tools;
 pub mod file_tools;
