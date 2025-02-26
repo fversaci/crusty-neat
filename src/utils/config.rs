@@ -120,7 +120,7 @@ impl ConfigBuilder {
             .as_ref()
             .ok_or_else(|| anyhow!("No reference was specified."))?;
         info!(
-            "Running rusty-neat to generate reads on {} with...",
+            "Running crusty-neat to generate reads on {} with...",
             reference
         );
 

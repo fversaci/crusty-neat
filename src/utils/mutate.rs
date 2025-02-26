@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 /// * `file_struct` - A hashmap of contig names (keys) and a vector
 ///   representing the original sequence.
 /// * `minimum_mutations` - is a usize or None that indicates if there
-///   is a requested minimum. The default is for rusty-neat to allow 0 mutations.
+///   is a requested minimum. The default is for crusty-neat to allow 0 mutations.
 /// * `rng` - random number generator for the run
 ///
 /// # Returns
