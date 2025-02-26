@@ -1,7 +1,8 @@
 BSD 3-Clause License
 --------------------
 
-Copyright (c) 1999-2020, NEAT Contributors
+Copyright (c) 2025, CRS4
+Copyright (c) 1999-2025, NEAT Contributors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
