@@ -2,11 +2,11 @@
 // sure I replicate it correctly.
 //   * For position 1, there is a vector of weights for each score,
 //   extracted from data.
-//   * For each position in the read length after that * For each
-//         possible quality score, a distribution is constructed with
-//         weights and scores, as determined by a matrix of weights
+//   * For each position in the read length after that
+//   * For each possible quality score, a distribution is constructed with
+//     weights and scores, as determined by a matrix of weights
 //   * For read length N and # possible quality scores Q, this creates
-//   a vector with length N
+//     a vector with length N
 //         * first element is a 1-D vector of weights with length Q
 //         * each subsequent element is a vector of length Q,
 //           each element of which is a vector of length N.
@@ -36,7 +36,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QualityScoreModel {
     // This is the vector of the quality scores possible in this

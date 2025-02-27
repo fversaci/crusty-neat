@@ -9,6 +9,5 @@ pub mod mutate;
 pub mod nucleotides;
 pub mod quality_scores;
 pub mod read_models;
-pub mod read_old_data;
 pub mod runner;
 pub mod vcf_tools;

@@ -55,7 +55,7 @@ pub struct RunConfiguration {
     pub output_dir: PathBuf,
     pub output_prefix: String,
 }
-#[allow(dead_code)]
+
 impl RunConfiguration {
     // The purpose of this function is to redirect you to the ConfigBuilder
     pub fn build() -> Result<ConfigBuilder> {
