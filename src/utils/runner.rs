@@ -1,3 +1,5 @@
+use crate::utils::nucleotides::Nuc;
+
 use super::config::RunConfiguration;
 use super::fasta_tools::{read_fasta, write_fasta};
 use super::fastq_tools::write_fastq;
@@ -65,7 +67,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     }
 
     if config.produce_fastq {
-        let mut read_sets: HashSet<Vec<u8>> = HashSet::new();
+        let mut read_sets: HashSet<Vec<Nuc>> = HashSet::new();
         for (_name, sequence) in mutated_map.iter() {
             // defined as a set of read sequences that should cover
             // the mutated sequence `coverage` number of times
@@ -83,7 +85,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         }
 
         info!("Shuffling output fastq data");
-        let outsets: Vec<&Vec<u8>> = read_sets.iter().collect();
+        let outsets: Vec<&Vec<Nuc>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
         outsets_order.shuffle(rng);
 

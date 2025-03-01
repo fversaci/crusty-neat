@@ -1,49 +1,79 @@
-// Throughout this program, we are standardizing the use of a u8 representation of the nucleotides
-//     A = 0
-//     C = 1
-//     G = 2
-//     T = 3
-//     N = 4
-// This is intended to make it easier to store them. We thought about using the u8 representation
-// of the character as built into Rust, but we'd then have to figure out the translations and keep
-// track of extra numbers. So this is intended to simplify everything
 use anyhow::{anyhow, Result};
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
 use rand::Rng;
 
-/// This defines the relationship between the 4 possible nucleotides
-/// in DNA and a simple u8 numbering system. Everything that isn't a
-/// recognized base is a 4.  Note that NEAT ignores soft masking.
-pub fn base_to_u8(char_of_interest: char) -> u8 {
-    match char_of_interest {
-        'A' | 'a' => 0,
-        'C' | 'c' => 1,
-        'G' | 'g' => 2,
-        'T' | 't' => 3,
-        _ => 4,
+/// Enum for DNA nucleotides.
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
+pub enum Nuc {
+    A,
+    C,
+    G,
+    T,
+    N,
+}
+
+/// Convert a base character to a nucleotide.
+pub fn base_to_nuc(base: char) -> Result<Nuc> {
+    match base {
+        'A' | 'a' => Ok(Nuc::A),
+        'C' | 'c' => Ok(Nuc::C),
+        'G' | 'g' => Ok(Nuc::G),
+        'T' | 't' => Ok(Nuc::T),
+        'N' | 'n' => Ok(Nuc::N),
+        _ => Err(anyhow!("Invalid base")),
     }
 }
 
-/// Canonical conversion from base u8 representation back into the
-/// character. No attempt to preserve or display any soft masking.
-pub fn u8_to_base(nuc_num: u8) -> char {
-    match nuc_num {
-        0 => 'A',
-        1 => 'C',
-        2 => 'G',
-        3 => 'T',
-        _ => 'N',
+/// Convert a nucleotide to a base character.
+pub fn nuc_to_base(nuc: Nuc) -> char {
+    match nuc {
+        Nuc::A => 'A',
+        Nuc::C => 'C',
+        Nuc::G => 'G',
+        Nuc::T => 'T',
+        Nuc::N => 'N',
+    }
+}
+/// Complement function for DNA nucleotides.
+pub fn complement(nuc: Nuc) -> Nuc {
+    match nuc {
+        Nuc::A => Nuc::T,
+        Nuc::C => Nuc::G,
+        Nuc::G => Nuc::C,
+        Nuc::T => Nuc::A,
+        Nuc::N => Nuc::N,
     }
 }
 
-/// Simple mutation model. The letter in the model represents
-/// the base we are mutating and the vector are the weights for mutating
-/// to another base (in the same a, c, g, t order)
-///
-/// By definition, the model is a 4x4 matrix with zeros along the diagonal
-/// because, e.g., A can't "mutate" to A.
-#[derive(Debug, Clone)]
+/// Reverse complement function for DNA nucleotides.
+pub fn reverse_complement(seq: &[Nuc]) -> Vec<Nuc> {
+    seq.iter().rev().map(|&n| complement(n)).collect()
+}
+
+pub fn random_nuc<R: Rng>(rng: &mut R) -> Nuc {
+    let dist = WeightedIndex::new([0.25, 0.25, 0.25, 0.25]).unwrap();
+    match dist.sample(rng) {
+        0 => Nuc::A,
+        1 => Nuc::C,
+        2 => Nuc::G,
+        3 => Nuc::T,
+        _ => Nuc::N,
+    }
+}
+
+pub fn random_seq<R: Rng>(rng: &mut R, len: usize) -> Vec<Nuc> {
+    (0..len).map(|_| random_nuc(rng)).collect()
+}
+
+pub fn seq_to_string(seq: &[Nuc]) -> String {
+    seq.iter().map(|&n| nuc_to_base(n)).collect()
+}
+
+pub fn string_to_seq(s: &str) -> Result<Vec<Nuc>> {
+    s.chars().map(base_to_nuc).collect()
+}
+
 pub struct NucModel {
     a: WeightedIndex<u32>,
     c: WeightedIndex<u32>,
@@ -62,45 +92,24 @@ impl NucModel {
         })
     }
 
-    /// Create a new NucModel from a vector of vectors of u32s
-    /// The outer vector should have 4 vectors of 4 u32s each
-    /// representing the weights for mutating from ACGT to ACGT
-    /// in that order.
-    pub fn from(weights: Vec<Vec<u32>>) -> Result<Self> {
-        // First some safety checks. This should be a 4x4 matrix defining mutation from
-        // ACGT (top -> down) to ACGT (left -> right)
-        if weights.len() != 4 {
-            return Err(anyhow!("Weights supplied to NucModel is wrong size"));
-        }
-        for weight_vec in &weights {
-            if weight_vec.len() != 4 {
-                return Err(anyhow!("Weights supplied to NucModel is wrong size"));
-            }
-        }
-        Ok(Self {
-            a: WeightedIndex::new(&weights[0])?,
-            c: WeightedIndex::new(&weights[1])?,
-            g: WeightedIndex::new(&weights[2])?,
-            t: WeightedIndex::new(&weights[3])?,
-        })
-    }
-
     /// Given a base, choose a new base based on the weights in the model
-    pub fn choose_new_nuc<R: Rng>(&self, base: u8, rng: &mut R) -> Result<u8> {
+    pub fn choose_new_nuc<R: Rng>(&self, base: Nuc, rng: &mut R) -> Result<Nuc> {
         // Pick the weights list for the base that was input
         let dist = match base {
-            0 => &self.a,
-            1 => &self.c,
-            2 => &self.g,
-            3 => &self.t,
-            // anything else we return the N value of 4
-            _ => {
-                return Ok(4);
-            }
+            Nuc::A => &self.a,
+            Nuc::C => &self.c,
+            Nuc::G => &self.g,
+            Nuc::T => &self.t,
+            _ => return Err(anyhow!("Invalid input base")),
         };
-        // Now we create a distribution from the weights and sample our choices.
-        let r = dist.sample(rng).try_into()?;
-        Ok(r)
+        // Sample the distribution
+        match dist.sample(rng) {
+            0 => Ok(Nuc::A),
+            1 => Ok(Nuc::C),
+            2 => Ok(Nuc::G),
+            3 => Ok(Nuc::T),
+            _ => Err(anyhow!("Invalid output base")),
+        }
     }
 }
 
@@ -110,61 +119,72 @@ mod tests {
     use crate::create_rng;
 
     #[test]
-    fn test_base_to_u8() {
-        assert_eq!(base_to_u8('A'), 0);
-        assert_eq!(base_to_u8('C'), 1);
-        assert_eq!(base_to_u8('G'), 2);
-        assert_eq!(base_to_u8('T'), 3);
-        assert_eq!(base_to_u8('N'), 4);
+    fn test_base_to_nuc() {
+        assert_eq!(base_to_nuc('A').unwrap(), Nuc::A);
+        assert_eq!(base_to_nuc('C').unwrap(), Nuc::C);
+        assert_eq!(base_to_nuc('G').unwrap(), Nuc::G);
+        assert_eq!(base_to_nuc('T').unwrap(), Nuc::T);
+        assert_eq!(base_to_nuc('N').unwrap(), Nuc::N);
+        assert_eq!(base_to_nuc('a').unwrap(), Nuc::A);
+        assert_eq!(base_to_nuc('c').unwrap(), Nuc::C);
+        assert_eq!(base_to_nuc('g').unwrap(), Nuc::G);
+        assert_eq!(base_to_nuc('t').unwrap(), Nuc::T);
+        assert_eq!(base_to_nuc('n').unwrap(), Nuc::N);
+        assert!(base_to_nuc('X').is_err());
     }
 
     #[test]
-    fn test_u8_to_base() {
-        assert_eq!(u8_to_base(0), 'A');
-        assert_eq!(u8_to_base(1), 'C');
-        assert_eq!(u8_to_base(2), 'G');
-        assert_eq!(u8_to_base(3), 'T');
-        assert_eq!(u8_to_base(4), 'N');
+    fn test_nuc_to_base() {
+        assert_eq!(nuc_to_base(Nuc::A), 'A');
+        assert_eq!(nuc_to_base(Nuc::C), 'C');
+        assert_eq!(nuc_to_base(Nuc::G), 'G');
+        assert_eq!(nuc_to_base(Nuc::T), 'T');
+        assert_eq!(nuc_to_base(Nuc::N), 'N');
     }
 
     #[test]
-    fn test_nuc_model_from_weights() -> Result<()> {
-        let a_weights = vec![0, 20, 1, 20];
-        let c_weights = vec![20, 0, 1, 1];
-        let g_weights = vec![1, 1, 0, 20];
-        let t_weights = vec![20, 1, 20, 0];
+    fn test_complement() {
+        assert_eq!(complement(Nuc::A), Nuc::T);
+        assert_eq!(complement(Nuc::C), Nuc::G);
+        assert_eq!(complement(Nuc::G), Nuc::C);
+        assert_eq!(complement(Nuc::T), Nuc::A);
+        assert_eq!(complement(Nuc::N), Nuc::N);
+    }
+
+    #[test]
+    fn test_reverse_complement() {
+        let seq = vec![Nuc::A, Nuc::C, Nuc::G, Nuc::T, Nuc::N];
+        let rev_comp = reverse_complement(&seq);
+        assert_eq!(rev_comp, vec![Nuc::N, Nuc::A, Nuc::C, Nuc::G, Nuc::T]);
+    }
+
+    #[test]
+    fn test_random_nuc() {
         let mut rng = create_rng(Some("Hello Cruel World"));
-        let test_model = NucModel::from(vec![a_weights, c_weights, g_weights, t_weights])?;
-        // It actually mutates the base
-        assert_ne!(test_model.choose_new_nuc(0, &mut rng).unwrap(), 0);
-        assert_ne!(test_model.choose_new_nuc(1, &mut rng).unwrap(), 1);
-        assert_ne!(test_model.choose_new_nuc(2, &mut rng).unwrap(), 2);
-        assert_ne!(test_model.choose_new_nuc(3, &mut rng).unwrap(), 3);
-        // It gives back N when you give it N
-        assert_eq!(test_model.choose_new_nuc(4, &mut rng).unwrap(), 4);
-        Ok(())
+        let nuc = random_nuc(&mut rng);
+        assert!(matches!(nuc, Nuc::A | Nuc::C | Nuc::G | Nuc::T));
     }
 
     #[test]
-    fn test_nuc_model_too_many_vecs() -> Result<()> {
-        let a_weights = vec![0, 20, 1, 20];
-        let c_weights = vec![20, 0, 1, 1];
-        let g_weights = vec![1, 1, 0, 20];
-        let t_weights = vec![20, 1, 20, 0];
-        let u_weights = vec![20, 1, 20, 0];
-        let er = NucModel::from(vec![a_weights, c_weights, g_weights, t_weights, u_weights]);
-        assert!(er.is_err());
-        Ok(())
+    fn test_random_seq() {
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let seq = random_seq(&mut rng, 100);
+        assert_eq!(seq.len(), 100);
+        for &nuc in &seq {
+            assert!(matches!(nuc, Nuc::A | Nuc::C | Nuc::G | Nuc::T));
+        }
     }
 
     #[test]
-    fn test_nuc_model_too_many_bases() -> Result<()> {
-        let a_weights = vec![0, 20, 1, 20, 1];
-        let c_weights = vec![20, 0, 1, 1];
-        let g_weights = vec![1, 1, 0, 20];
-        let t_weights = vec![20, 1, 20, 0];
-        let er = NucModel::from(vec![a_weights, c_weights, g_weights, t_weights]);
-        assert!(er.is_err());
-        Ok(())
+    fn test_seq_to_string() {
+        let seq = vec![Nuc::A, Nuc::C, Nuc::G, Nuc::T, Nuc::N];
+        assert_eq!(seq_to_string(&seq), "ACGTN");
+    }
+
+    #[test]
+    fn test_string_to_seq() {
+        let seq = vec![Nuc::A, Nuc::C, Nuc::G, Nuc::T, Nuc::N];
+        assert_eq!(string_to_seq("ACGTN").unwrap(), seq);
+        assert_eq!(string_to_seq("acgtn").unwrap(), seq);
     }
 }

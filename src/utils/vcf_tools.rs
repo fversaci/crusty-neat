@@ -1,7 +1,7 @@
 extern crate log;
 
 use super::file_tools::open_file;
-use super::nucleotides::u8_to_base;
+use super::nucleotides::{nuc_to_base, Nuc};
 use anyhow::{anyhow, Result};
 use rand::seq::index::sample;
 use rand::Rng;
@@ -50,7 +50,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///
 /// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
-    variant_locations: &HashMap<String, Vec<(usize, u8, u8)>>,
+    variant_locations: &HashMap<String, Vec<(usize, Nuc, Nuc)>>,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &str,
@@ -136,8 +136,8 @@ pub fn write_vcf<R: Rng>(
                 "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
                 contig,
                 mutation.0 + 1,
-                u8_to_base(mutation.2),
-                u8_to_base(mutation.1),
+                nuc_to_base(mutation.2),
+                nuc_to_base(mutation.1),
                 genotype_to_string(genotype)?,
             );
 
@@ -163,7 +163,10 @@ mod tests {
 
     #[test]
     fn test_write_vcf() -> Result<()> {
-        let variant_locations = HashMap::from([("chr1".to_string(), vec![(3, 0, 1), (7, 1, 2)])]);
+        let variant_locations = HashMap::from([(
+            "chr1".to_string(),
+            vec![(3, Nuc::A, Nuc::C), (7, Nuc::C, Nuc::G)],
+        )]);
         let fasta_order = vec!["chr1".to_string()];
         let ploidy = 2;
         let reference_path = "/fake/path/to/H1N1.fa";

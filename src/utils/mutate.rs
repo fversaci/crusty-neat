@@ -4,6 +4,8 @@
 //
 // mutate_sequence adds actual mutations to the fasta sequence
 
+use crate::utils::nucleotides::Nuc;
+
 use super::nucleotides::NucModel;
 use anyhow::{anyhow, Result};
 use log::{debug, error};
@@ -33,16 +35,16 @@ use std::collections::{HashMap, HashSet};
 /// sequence to mutate. It then builds a return string that represents
 /// the altered sequence and stores all the variants.
 pub fn mutate_fasta<R: Rng>(
-    file_struct: &HashMap<String, Vec<u8>>,
+    file_struct: &HashMap<String, Vec<Nuc>>,
     minimum_mutations: Option<usize>,
     rng: &mut R,
 ) -> Result<(
-    HashMap<String, Vec<u8>>,
-    HashMap<String, Vec<(usize, u8, u8)>>,
+    HashMap<String, Vec<Nuc>>,
+    HashMap<String, Vec<(usize, Nuc, Nuc)>>,
 )> {
     const MUT_RATE: f64 = 0.01;
-    let mut return_struct: HashMap<String, Vec<u8>> = HashMap::new();
-    let mut all_variants: HashMap<String, Vec<(usize, u8, u8)>> = HashMap::new();
+    let mut return_struct: HashMap<String, Vec<Nuc>> = HashMap::new();
+    let mut all_variants: HashMap<String, Vec<(usize, Nuc, Nuc)>> = HashMap::new();
 
     for (name, sequence) in file_struct {
         let sequence_length = sequence.len();
@@ -68,7 +70,7 @@ pub fn mutate_fasta<R: Rng>(
     Ok((return_struct, all_variants))
 }
 
-/// This function takes a vector of u8's and mutates a few positions
+/// This function takes a vector of Nuc's and mutates a few positions
 /// at random. It returns the mutated sequence and a list of tuples
 /// with the position and the alts of the SNPs.
 ///
@@ -86,17 +88,17 @@ pub fn mutate_fasta<R: Rng>(
 /// * A vector of tuples containing the location, alt and ref of each
 ///   variant
 fn mutate_sequence<R: Rng>(
-    sequence: &[u8],
+    sequence: &[Nuc],
     num_positions: usize,
     rng: &mut R,
-) -> Result<(Vec<u8>, Vec<(usize, u8, u8)>)> {
+) -> Result<(Vec<Nuc>, Vec<(usize, Nuc, Nuc)>)> {
     debug!("Adding {} mutations", num_positions);
     let mut mutated_record = sequence.to_owned();
     let mut indexes_to_mutate: HashSet<usize> = HashSet::new();
     // choose num_positions distinct indexes to mutate
     while indexes_to_mutate.len() < num_positions {
         let index = rng.random_range(0..sequence.len());
-        if mutated_record[index] == 4 {
+        if mutated_record[index] == Nuc::N {
             continue;
         }
         indexes_to_mutate.insert(index);
@@ -105,7 +107,7 @@ fn mutate_sequence<R: Rng>(
     // todo incorporate custom models
     let nucleotide_mutation_model = NucModel::new()?;
     // Will hold the variants added to this sequence
-    let mut sequence_variants: Vec<(usize, u8, u8)> = Vec::new();
+    let mut sequence_variants: Vec<(usize, Nuc, Nuc)> = Vec::new();
     // for each index, picks a new base
     for index in indexes_to_mutate {
         // remember the reference for later.
@@ -130,49 +132,47 @@ fn mutate_sequence<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::create_rng;
+    use crate::{create_rng, utils::nucleotides::random_seq};
 
     #[test]
     fn test_mutate_sequence() -> Result<()> {
-        let seq1: Vec<u8> = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
-        let num_positions = 2;
         let mut rng = create_rng(Some("Hello Cruel World"));
-        let mutant = mutate_sequence(&seq1, num_positions, &mut rng)?;
-        assert_eq!(mutant.0.len(), seq1.len());
+        let seq: Vec<Nuc> = random_seq(&mut rng, 100);
+        let num_positions = 1;
+        let mutant = mutate_sequence(&seq, num_positions, &mut rng)?;
+        assert_eq!(mutant.0.len(), seq.len());
         assert!(!mutant.1.is_empty());
-        assert_eq!(mutant.0[0], 4);
-        assert_eq!(mutant.0[1], 4);
+        assert!(seq != mutant.0);
         Ok(())
     }
 
     #[test]
     fn test_mutate_fasta() -> Result<()> {
-        let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
-        let file_struct: HashMap<String, Vec<u8>> =
-            HashMap::from([("chr1".to_string(), seq.clone())]);
         let mut rng = create_rng(Some("Hello Cruel World"));
-        let mutations = mutate_fasta(&file_struct, Some(1), &mut rng)?;
-        assert!(mutations.0.contains_key("chr1"));
-        assert!(mutations.1.contains_key("chr1"));
-        let mutation_location = mutations.1["chr1"][0].0;
-        let mutation_alt = mutations.1["chr1"][0].1;
-        let mutation_ref = mutations.1["chr1"][0].2;
-        assert_eq!(mutation_ref, seq[mutation_location]);
-        assert_ne!(mutation_alt, mutation_ref);
+        let seq: Vec<Nuc> = random_seq(&mut rng, 100);
+        let file_struct: HashMap<String, Vec<Nuc>> =
+            HashMap::from([("chr1".to_string(), seq.clone())]);
+        let (mutated, mutations) = mutate_fasta(&file_struct, Some(1), &mut rng)?;
+        assert!(mutated.contains_key("chr1"));
+        assert!(mutations.contains_key("chr1"));
+        let (loc, alt_nuc, ref_nuc) = mutations["chr1"][0];
+        assert_eq!(ref_nuc, seq[loc]);
+        assert_ne!(alt_nuc, ref_nuc);
         Ok(())
     }
 
     #[test]
     fn test_mutate_fasta_no_mutations() -> Result<()> {
-        let seq = vec![4, 4, 0, 0, 0, 1, 1, 2, 0, 3, 1, 1, 1];
-        let file_struct: HashMap<String, Vec<u8>> =
-            HashMap::from([("chr1".to_string(), seq.clone())]);
-        // if a random mutation suddenly pops up in a build, it's probably the seed for this.
         let mut rng = create_rng(Some("Hello Cruel World"));
-        let mutations = mutate_fasta(&file_struct, None, &mut rng)?;
-        assert!(mutations.0.contains_key("chr1"));
-        assert!(mutations.1.contains_key("chr1"));
-        assert!(mutations.1["chr1"].is_empty());
+        let seq: Vec<Nuc> = random_seq(&mut rng, 100);
+        let file_struct: HashMap<String, Vec<Nuc>> =
+            HashMap::from([("chr1".to_string(), seq.clone())]);
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let (mutated, mutations) = mutate_fasta(&file_struct, None, &mut rng)?;
+        assert!(mutated.contains_key("chr1"));
+        assert!(mutations.contains_key("chr1"));
+        assert!(mutations["chr1"].is_empty());
+        assert_eq!(seq, mutated["chr1"]);
         Ok(())
     }
 }

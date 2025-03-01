@@ -13,6 +13,8 @@ use rand::Rng;
 use rand_distr::Distribution;
 use std::collections::HashSet;
 
+use super::nucleotides::Nuc;
+
 /// This function selects the positions of the reads. It starts at the
 /// beginning and goes out one read length, then picks a random jump
 /// between 0 and half the read length to move and picks those
@@ -77,7 +79,7 @@ fn cover_dataset<R: Rng>(
 ///
 /// # Arguments
 ///
-/// `mutated_sequence`: a vector of u8's representing the mutated sequence.
+/// `mutated_sequence`: a vector of Nuc's representing the mutated sequence.
 /// `read_length`: the length ef the reads for this run
 /// `coverage`: the average depth of coverage for this run
 /// `paired_ended`: is the run paired ended or not
@@ -89,14 +91,14 @@ fn cover_dataset<R: Rng>(
 ///
 /// HashSet of vectors representing the read sequences.
 pub fn generate_reads<R: Rng>(
-    mutated_sequence: &[u8],
+    mutated_sequence: &[Nuc],
     read_length: &usize,
     coverage: &usize,
     paired_ended: bool,
     mean: Option<f64>,
     st_dev: Option<f64>,
     rng: &mut R,
-) -> Result<HashSet<Vec<u8>>> {
+) -> Result<HashSet<Vec<Nuc>>> {
     let fragment_distribution = if paired_ended {
         IntDistribution::new_normal(
             mean.ok_or_else(|| anyhow!("mean can't be None when paired_ended is true"))?,
@@ -107,7 +109,7 @@ pub fn generate_reads<R: Rng>(
     };
 
     // set up some defaults and storage
-    let mut read_set: HashSet<Vec<u8>> = HashSet::new();
+    let mut read_set: HashSet<Vec<Nuc>> = HashSet::new();
     // length of the mutated sequence
     let seq_len = mutated_sequence.len();
     // Generate a vector of read positions
@@ -134,7 +136,7 @@ pub fn generate_reads<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::create_rng;
+    use crate::{create_rng, utils::nucleotides::random_seq};
 
     #[test]
     fn test_cover_dataset() {
@@ -178,7 +180,8 @@ mod tests {
 
     #[test]
     fn test_generate_reads_single() -> Result<()> {
-        let mutated_sequence = vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 2, 2, 2, 4, 4, 4, 4];
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let mutated_sequence = random_seq(&mut rng, 100);
         let read_length = 10;
         let coverage = 1;
         let paired_ended = false;
@@ -195,13 +198,14 @@ mod tests {
             &mut rng,
         )?;
         println!("{:?}", reads);
-        assert!(reads.contains(&(vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0])));
+        assert!(reads.contains(&mutated_sequence[0..read_length]));
         Ok(())
     }
 
     #[test]
     fn test_seed_rng() -> Result<()> {
-        let mutated_sequence = vec![0, 0, 1, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 2, 2, 2, 4, 4, 4, 4];
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let mutated_sequence = random_seq(&mut rng, 100);
         let read_length = 10;
         let coverage = 1;
         let paired_ended = false;
@@ -235,7 +239,8 @@ mod tests {
 
     #[test]
     fn test_generate_reads_paired() -> Result<()> {
-        let mutated_sequence: Vec<u8> = std::iter::repeat(1).take(100_000).collect();
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let mutated_sequence = random_seq(&mut rng, 1000);
         let read_length = 100;
         let coverage = 1;
         let paired_ended = true;

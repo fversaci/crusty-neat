@@ -4,31 +4,9 @@ use anyhow::Result;
 use rand::Rng;
 use std::io::Write;
 
-use super::fasta_tools::sequence_array_to_string;
 use super::file_tools::open_file;
+use super::nucleotides::{reverse_complement, seq_to_string, Nuc};
 use super::quality_scores::QualityScoreModel;
-
-/// Complement function for DNA nucleotides.
-fn complement(nucleotide: u8) -> u8 {
-    // 0 = A, 1 = C, 2 = G, 3 = T,
-    match nucleotide {
-        0 => 3,
-        1 => 2,
-        2 => 1,
-        3 => 0,
-        _ => 4,
-    }
-}
-
-/// Reverse complement function for DNA sequences.
-fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
-    let length = sequence.len();
-    let mut rev_comp = Vec::new();
-    for i in (0..length).rev() {
-        rev_comp.push(complement(sequence[i]))
-    }
-    rev_comp
-}
 
 /// Writes FASTQ files based on the provided dataset.
 ///
@@ -38,7 +16,7 @@ fn reverse_complement(sequence: &[u8]) -> Vec<u8> {
 /// * `overwrite_output` - A boolean flag to enable or disable overwriting
 ///   existing files.
 /// * `paired_ended` - A boolean flag to enable or disable paired-end mode.
-/// * `dataset` - A list of `Vec<u8>` representing DNA sequences.
+/// * `dataset` - A list of `Vec<Nuc>` representing DNA sequences.
 /// * `dataset_order` - A list of indices to order the dataset.
 /// * `quality_score_model` - A `QualityScoreModel` object to generate
 ///   quality scores.
@@ -56,7 +34,7 @@ pub fn write_fastq<R: Rng>(
     fastq_filename: &str,
     overwrite_output: bool,
     paired_ended: bool,
-    dataset: Vec<&Vec<u8>>,
+    dataset: Vec<&Vec<Nuc>>,
     dataset_order: Vec<usize>,
     quality_score_model: QualityScoreModel,
     rng: &mut R,
@@ -87,7 +65,7 @@ pub fn write_fastq<R: Rng>(
         // sequence name
         writeln!(outfile1, "@{}{}/1", name_prefix, order_index + 1)?;
         // Array as a string
-        writeln!(outfile1, "{}", sequence_array_to_string(sequence))?;
+        writeln!(outfile1, "{}", seq_to_string(sequence))?;
         // The stupid plus sign
         writeln!(outfile1, "+")?;
         // Qual score of all F's for the whole thing.
@@ -101,7 +79,7 @@ pub fn write_fastq<R: Rng>(
             // sequence name
             writeln!(outfile2, "@{}{}/2", name_prefix, order_index + 1)?;
             // Array as a string
-            writeln!(outfile2, "{}", sequence_array_to_string(&rev_comp_sequence))?;
+            writeln!(outfile2, "{}", seq_to_string(&rev_comp_sequence))?;
             // The stupid plus sign
             writeln!(outfile2, "+")?;
             // Qual score of all F's for the whole thing.
@@ -125,39 +103,18 @@ fn quality_scores_to_str(array: Vec<u32>) -> String {
 mod tests {
     use super::*;
     use crate::create_rng;
+    use crate::utils::nucleotides::random_seq;
     use std::fs;
     use std::path::Path;
-
-    #[test]
-    fn test_complement() {
-        let nuc1 = 0;
-        let nuc2 = 1;
-        let nuc3 = 2;
-        let nuc4 = 3;
-        let nuc5 = 4;
-
-        assert_eq!(complement(nuc1), 3);
-        assert_eq!(complement(nuc2), 2);
-        assert_eq!(complement(nuc3), 1);
-        assert_eq!(complement(nuc4), 0);
-        assert_eq!(complement(nuc5), 4);
-    }
-
-    #[test]
-    fn test_reverse_complement() {
-        let read: Vec<u8> = vec![0, 0, 0, 0, 1, 1, 1, 1];
-        let revcomp: Vec<u8> = vec![2, 2, 2, 2, 3, 3, 3, 3];
-        assert_eq!(reverse_complement(&read), revcomp);
-    }
 
     #[test]
     fn test_write_fastq_single() -> Result<()> {
         let fastq_filename = "test_single";
         let overwrite_output = true;
         let paired_ended = false;
-        let seq1 = vec![0, 0, 0, 0, 1, 1, 1, 1];
-        let seq2 = vec![2, 2, 2, 2, 3, 3, 3, 3];
         let mut rng = create_rng(Some("Hello Cruel World"));
+        let seq1 = random_seq(&mut rng, 100);
+        let seq2 = random_seq(&mut rng, 100);
         let dataset = vec![&seq1, &seq2];
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();
@@ -184,9 +141,9 @@ mod tests {
         // might as well test the o_o function as well
         let overwrite_output = false;
         let paired_ended = true;
-        let seq1 = vec![0, 0, 0, 0, 1, 1, 1, 1];
-        let seq2 = vec![2, 2, 2, 2, 3, 3, 3, 3];
         let mut rng = create_rng(Some("Hello Cruel World"));
+        let seq1 = random_seq(&mut rng, 100);
+        let seq2 = random_seq(&mut rng, 100);
         let dataset = vec![&seq1, &seq2];
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();
