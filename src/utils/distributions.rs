@@ -29,3 +29,27 @@ impl Distribution<i64> for IntDistribution {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::create_rng;
+
+    #[test]
+    fn test_int_normal() {
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let theor_mean = 123.;
+        let dist = IntDistribution::new_normal(theor_mean, 1.).unwrap();
+        let vals: Vec<i64> = (0..2000).map(|_| dist.sample(&mut rng)).collect();
+        let mean = vals.iter().sum::<i64>() as f64 / vals.len() as f64;
+        assert!((mean - theor_mean).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_int_constant() {
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let dist = IntDistribution::new_constant(123);
+        let val: i64 = dist.sample(&mut rng);
+        assert_eq!(val, 123);
+    }
+}
