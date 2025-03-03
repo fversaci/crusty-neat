@@ -4,9 +4,7 @@
 //
 // mutate_sequence adds actual mutations to the fasta sequence
 
-use crate::utils::nucleotides::Nuc;
-
-use super::nucleotides::NucModel;
+use super::nucleotides::{Nuc, NucModel};
 use anyhow::{anyhow, Result};
 use log::{debug, error};
 use rand::Rng;

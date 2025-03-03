@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 // This is the core functionality of NEAT. Generate reads turns a
 // mutated fasta array into short reads.
 // The idea of cover_dataset is we generate a set of coordinates
@@ -8,12 +7,12 @@ use anyhow::{anyhow, Result};
 // fasta file. These will either be read-length fragments or fragment
 // model length fragments.
 
-use crate::utils::distributions::IntDistribution;
+use super::distributions::IntDistribution;
+use super::nucleotides::Nuc;
+use anyhow::{anyhow, Result};
 use rand::Rng;
 use rand_distr::Distribution;
 use std::collections::HashSet;
-
-use super::nucleotides::Nuc;
 
 /// This function selects the positions of the reads. It starts at the
 /// beginning and goes out one read length, then picks a random jump

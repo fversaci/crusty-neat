@@ -1,10 +1,9 @@
-use crate::utils::nucleotides::Nuc;
-
 use super::config::RunConfiguration;
 use super::fasta_tools::{read_fasta, write_fasta};
 use super::fastq_tools::write_fastq;
 use super::make_reads::generate_reads;
 use super::mutate::mutate_fasta;
+use super::nucleotides::Nuc;
 use super::read_models::read_quality_score_model_json;
 use super::vcf_tools::write_vcf;
 use anyhow::Result;

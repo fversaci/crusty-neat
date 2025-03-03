@@ -1,12 +1,11 @@
 // This library writes either single ended or paired-ended fastq files.
 
-use anyhow::Result;
-use rand::Rng;
-use std::io::Write;
-
 use super::file_tools::open_file;
 use super::nucleotides::{reverse_complement, seq_to_string, Nuc};
 use super::quality_scores::QualityScoreModel;
+use anyhow::Result;
+use rand::Rng;
+use std::io::Write;
 
 /// Writes FASTQ files based on the provided dataset.
 ///
