@@ -3,6 +3,7 @@
 use super::file_tools::open_file;
 use super::file_tools::read_lines;
 use super::nucleotides::{base_to_nuc, nuc_to_base, Nuc};
+use super::types::SeqByContig;
 use anyhow::{anyhow, Result};
 use log::info;
 use std::collections::HashMap;
@@ -22,10 +23,10 @@ use std::io::Write;
 ///
 /// Errors if the file cannot be read or if the file is not in fasta
 /// format.
-pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<Nuc>>, Vec<String>)> {
+pub fn read_fasta(fasta_path: &str) -> Result<(SeqByContig, Vec<String>)> {
     info!("Reading fasta: {}", fasta_path);
 
-    let mut fasta_map: HashMap<String, Vec<Nuc>> = HashMap::new();
+    let mut fasta_map: SeqByContig = HashMap::new();
     let mut fasta_order: Vec<String> = Vec::new();
     let mut current_key = String::new();
     let mut temp_seq: Vec<Nuc> = Vec::new();
@@ -69,7 +70,7 @@ pub fn read_fasta(fasta_path: &str) -> Result<(HashMap<String, Vec<Nuc>>, Vec<St
 ///
 /// Errors if there is a problem writing the file.
 pub fn write_fasta(
-    fasta_output: &HashMap<String, Vec<Nuc>>,
+    fasta_output: &SeqByContig,
     fasta_order: &[String],
     overwrite_output: bool,
     output_file: &str,
@@ -118,8 +119,7 @@ mod tests {
     fn test_write_fasta() -> Result<()> {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq1 = random_seq(&mut rng, 100);
-        let fasta_output: HashMap<String, Vec<Nuc>> =
-            HashMap::from([(String::from("H1N1_HA"), seq1)]);
+        let fasta_output: SeqByContig = HashMap::from([(String::from("H1N1_HA"), seq1)]);
         let fasta_pointer = fasta_output;
         let fasta_order = vec![String::from("H1N1_HA")];
         let output_file = "test";

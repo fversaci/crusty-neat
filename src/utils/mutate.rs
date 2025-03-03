@@ -4,7 +4,10 @@
 //
 // mutate_sequence adds actual mutations to the fasta sequence
 
-use super::nucleotides::{Nuc, NucModel};
+use super::{
+    nucleotides::{Nuc, NucModel},
+    types::SeqByContig,
+};
 use anyhow::{anyhow, Result};
 use log::{debug, error};
 use rand::Rng;
@@ -33,15 +36,12 @@ use std::collections::{HashMap, HashSet};
 /// sequence to mutate. It then builds a return string that represents
 /// the altered sequence and stores all the variants.
 pub fn mutate_fasta<R: Rng>(
-    file_struct: &HashMap<String, Vec<Nuc>>,
+    file_struct: &SeqByContig,
     minimum_mutations: Option<usize>,
     rng: &mut R,
-) -> Result<(
-    HashMap<String, Vec<Nuc>>,
-    HashMap<String, Vec<(usize, Nuc, Nuc)>>,
-)> {
+) -> Result<(SeqByContig, HashMap<String, Vec<(usize, Nuc, Nuc)>>)> {
     const MUT_RATE: f64 = 0.01;
-    let mut return_struct: HashMap<String, Vec<Nuc>> = HashMap::new();
+    let mut return_struct: SeqByContig = HashMap::new();
     let mut all_variants: HashMap<String, Vec<(usize, Nuc, Nuc)>> = HashMap::new();
 
     for (name, sequence) in file_struct {
@@ -148,8 +148,7 @@ mod tests {
     fn test_mutate_fasta() -> Result<()> {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
-        let file_struct: HashMap<String, Vec<Nuc>> =
-            HashMap::from([("chr1".to_string(), seq.clone())]);
+        let file_struct: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
         let (mutated, mutations) = mutate_fasta(&file_struct, Some(1), &mut rng)?;
         assert!(mutated.contains_key("chr1"));
         assert!(mutations.contains_key("chr1"));
@@ -163,8 +162,7 @@ mod tests {
     fn test_mutate_fasta_no_mutations() -> Result<()> {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
-        let file_struct: HashMap<String, Vec<Nuc>> =
-            HashMap::from([("chr1".to_string(), seq.clone())]);
+        let file_struct: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
         let mut rng = create_rng(Some("Hello Cruel World"));
         let (mutated, mutations) = mutate_fasta(&file_struct, None, &mut rng)?;
         assert!(mutated.contains_key("chr1"));

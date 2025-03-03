@@ -11,4 +11,5 @@ pub mod nucleotides;
 pub mod quality_scores;
 pub mod read_models;
 pub mod runner;
+pub mod types;
 pub mod vcf_tools;
