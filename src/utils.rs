@@ -6,6 +6,7 @@ pub mod fastq_tools;
 pub mod file_tools;
 pub mod make_reads;
 pub mod mutate;
+pub mod mutation;
 pub mod nucleotides;
 pub mod quality_scores;
 pub mod read_models;
