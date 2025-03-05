@@ -258,7 +258,7 @@ mod tests {
 
         conf.produce_fasta = Some(true);
         assert!(conf.check().is_err());
-        
+
         conf.overwrite_output = Some(false);
         assert!(conf.check().is_ok());
 
@@ -278,7 +278,7 @@ mod tests {
 
         conf.fragment_st_dev = Some(200.0);
         assert!(conf.check().is_ok());
-        
+
         conf.produce_vcf = Some(true);
         assert!(conf.check().is_err());
 
