@@ -20,7 +20,7 @@ use std::collections::{HashMap, HashSet};
 /// * `file_struct` - A hashmap of contig names (keys) and a vector
 ///   representing the original sequence.
 /// * `minimum_mutations` - is a usize or None that indicates if there
-///   is a requested minimum. The default is for crusty-neat to allow 0 mutations.
+///   is a requested minimum.
 /// * `rng` - random number generator for the run
 ///
 /// # Returns
@@ -38,25 +38,20 @@ use std::collections::{HashMap, HashSet};
 pub fn mutate_fasta<R: Rng>(
     file_struct: &SeqByContig,
     minimum_mutations: Option<usize>,
+    mutation_rate: Option<f64>,
     rng: &mut R,
 ) -> Result<(SeqByContig, HashMap<String, Vec<(usize, Nuc, Nuc)>>)> {
-    const MUT_RATE: f64 = 0.01;
     let mut return_struct: SeqByContig = HashMap::new();
     let mut all_variants: HashMap<String, Vec<(usize, Nuc, Nuc)>> = HashMap::new();
 
     for (name, sequence) in file_struct {
         let sequence_length = sequence.len();
         debug!("Sequence {} is {} bp long", name, sequence_length);
-        // Calculate the number of mutation positions based on
-        // mutation rate
-        let mut num_positions: f64 = sequence_length as f64 * MUT_RATE;
-        // Introduce random fluctuation to the mutation count
-        let factor: f64 = rng.random_range(0.0..0.10);
-        let sign: f64 = if rng.random_bool(0.25) { -1.0 } else { 1.0 };
-        num_positions += sign * factor;
-        // Ensure the number of mutations meets the minimum threshold if provided
+        // Calculate the number of mutation positions based on the mutation rate
+        let num_positions = sequence_length as f64 * mutation_rate.unwrap_or(0.0);
+        // Ensure the number of mutations meets the minimum threshold, if provided
         let num_positions = minimum_mutations.unwrap_or(0).max(num_positions as usize);
-        // Apply mutations to the sequence
+        // Generate mutations to the sequence
         let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng)?;
         // Store the mutated sequence and corresponding mutations
         return_struct
@@ -149,7 +144,7 @@ mod tests {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let file_struct: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
-        let (mutated, mutations) = mutate_fasta(&file_struct, Some(1), &mut rng)?;
+        let (mutated, mutations) = mutate_fasta(&file_struct, Some(1), None, &mut rng)?;
         assert!(mutated.contains_key("chr1"));
         assert!(mutations.contains_key("chr1"));
         let (loc, alt_nuc, ref_nuc) = mutations["chr1"][0];
@@ -164,7 +159,7 @@ mod tests {
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let file_struct: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
         let mut rng = create_rng(Some("Hello Cruel World"));
-        let (mutated, mutations) = mutate_fasta(&file_struct, None, &mut rng)?;
+        let (mutated, mutations) = mutate_fasta(&file_struct, None, None, &mut rng)?;
         assert!(mutated.contains_key("chr1"));
         assert!(mutations.contains_key("chr1"));
         assert!(mutations["chr1"].is_empty());

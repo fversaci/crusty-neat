@@ -27,7 +27,7 @@ use std::collections::HashSet;
 /// * `Result<()>` - A result that will be Ok(()) if the run was
 ///   successful
 pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
-    // check that the configuration is valid
+    // check that the configuration is valid and create the output directory
     config.check()?;
     check_create_dir(config.output_dir.as_ref().unwrap())?;
 
@@ -38,7 +38,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         config.output_prefix.unwrap()
     );
 
-    // Reading the reference file into memory
+    // Read the reference file into memory
     info!(
         "Mapping reference fasta file: {}",
         &config.reference.as_ref().unwrap().display()
@@ -46,13 +46,19 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     let (fasta_map, fasta_order) = read_fasta(config.reference.as_ref().unwrap())?;
 
     // Load models that will be used for the runs.
-    // For now we will use the one supplied, pulled directly from NEAT2.0's original model.
+    // For now we will use the one supplied, pulled directly from
+    // NEAT2.0's original model.
     let default_quality_score_model_file = "models/neat_quality_score_model.json";
     let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
 
-    // Mutating the reference and recording the variant locations.
+    // Mutate the reference and recording the variant locations.
     info!("Mutating reference.");
-    let (mutated_map, variant_locations) = mutate_fasta(&fasta_map, config.minimum_mutations, rng)?;
+    let (mutated_map, variant_locations) = mutate_fasta(
+        &fasta_map,
+        config.minimum_mutations,
+        config.mutation_rate,
+        rng,
+    )?;
 
     if config.produce_fasta == Some(true) {
         info!("Outputting fasta file");
