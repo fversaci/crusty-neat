@@ -9,8 +9,8 @@ extern crate statrs;
 
 mod utils;
 
-use anyhow::{anyhow, Result};
-use clap::Parser;
+use crate::clap::Parser;
+use anyhow::Result;
 use log::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -18,9 +18,7 @@ use simplelog::*;
 use std::fs::File;
 use std::hash::Hash;
 use std::hash::{DefaultHasher, Hasher};
-use utils::cli;
-use utils::config::{build_config_from_args, read_config_yaml};
-use utils::file_tools::check_parent;
+use utils::config::{self, RunConfiguration};
 use utils::runner::run_neat;
 
 /// Create a random number generator from a seed string. If no seed is provided
@@ -40,55 +38,38 @@ pub fn create_rng(seed: Option<&str>) -> StdRng {
 /// Main function for the program. This function parses the command
 /// line arguments and then runs the main script for generating reads.
 fn main() -> Result<()> {
-    // parse the arguments from the command line
-    let args = cli::Cli::parse();
+    let args = config::Args::parse();
+    // read config file or start with default values
+    let mut config;
+    if let Some(file) = args.config_file {
+        info!("Reading configuration from file: {}", file.display());
+        config = RunConfiguration::from_file(&file)?;
+    } else {
+        info!("Using default configuration");
+        config = RunConfiguration::fill();
+    }
+    // override values from the command line (if any)
+    if let Some(arg_config) = args.config {
+        info!("Overriding configuration from command line");
+        config.override_with(&arg_config);
+    }
+    dbg!(&config);
 
-    // log filter
-    let level_filter = match args.log_level.to_lowercase().as_str() {
-        "trace" => LevelFilter::Trace,
-        "debug" => LevelFilter::Debug,
-        "info" => LevelFilter::Info,
-        "warn" => LevelFilter::Warn,
-        "error" => LevelFilter::Error,
-        "off" => LevelFilter::Off,
-        _ => {
-            return Err(anyhow!(
-                "Unknown log level, please set to one of \
-             Trace, Debug, Info, Warn, Error, or Off (case insensitive)."
-            ))
-        }
-    };
-
-    // Check that the parent dir exists
-    let log_destination = check_parent(&args.log_dest)?;
-
-    // Set up the logger for the run
-    CombinedLogger::init(vec![
-        TermLogger::new(
-            level_filter,
-            Config::default(),
-            TerminalMode::Stdout,
-            ColorChoice::Always,
-        ),
-        WriteLogger::new(
-            level_filter,
-            Config::default(),
-            File::create(log_destination)?,
-        ),
-    ])?;
+    let _loggers;
+    let term_log = TermLogger::new(
+        args.log_level,
+        Config::default(),
+        TerminalMode::Stdout,
+        ColorChoice::Always,
+    );
+    if let Some(log_path) = args.log_dest {
+        let flog = WriteLogger::new(args.log_level, Config::default(), File::create(log_path)?);
+        _loggers = CombinedLogger::init(vec![term_log, flog])?;
+    } else {
+        _loggers = CombinedLogger::init(vec![term_log])?;
+    }
 
     info!("Begin processing");
-
-    // set up the config struct based on whether there was an input
-    // config. Input config overrides any other inputs.
-    let config = if !args.config.is_empty() {
-        info!("Using Configuration file input: {}", &args.config);
-        read_config_yaml(args.config)
-    } else {
-        info!("Using command line arguments.");
-        debug!("Command line args: {:?}", &args);
-        build_config_from_args(args)
-    }?;
 
     // Generate the RNG used for this run
     let seed = config.rng_seed.as_deref();

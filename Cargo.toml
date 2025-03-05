@@ -18,3 +18,4 @@ serde = { version = "1.0.218", features = ["derive"] }
 statrs = "0.18.0"
 anyhow = "1.0.96"
 rand_distr = "0.5.1"
+tempdir = "0.3.7"

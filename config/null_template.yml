@@ -1,0 +1,21 @@
+reference: null
+read_len: null
+coverage: null
+
+mutation_rate: null
+minimum_mutations: null
+rng_seed: null
+
+ploidy: null
+paired_ended: null
+fragment_mean: null
+fragment_st_dev: null
+
+produce_bam: null
+produce_vcf: null
+produce_fasta: null
+produce_fastq: null
+
+overwrite_output: null
+output_dir: null
+output_prefix: null
