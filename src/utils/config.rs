@@ -148,6 +148,12 @@ impl RunConfiguration {
                 "At least one output format must be selected"
             ));
         }
+        // check that mutation rate is between 0 and 0.5
+        if let Some(rate) = self.mutation_rate {
+            if rate < 0.0 || rate > 0.5 {
+                return Err(anyhow!("Mutation rate should be between 0 and 0.5"));
+            }
+        }
         // paired ended reads require fragment size
         if self.paired_ended == Some(true)
             && (self.fragment_mean.is_none() || self.fragment_st_dev.is_none())
@@ -260,6 +266,15 @@ mod tests {
         assert!(conf.check().is_err());
 
         conf.overwrite_output = Some(false);
+        assert!(conf.check().is_ok());
+
+        conf.mutation_rate = Some(-0.2);
+        assert!(conf.check().is_err());
+        conf.mutation_rate = Some(0.6);
+        assert!(conf.check().is_err());
+        conf.mutation_rate = Some(0.001);
+        assert!(conf.check().is_ok());
+        conf.mutation_rate = None;
         assert!(conf.check().is_ok());
 
         conf.produce_fastq = Some(true);
