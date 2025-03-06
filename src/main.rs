@@ -67,7 +67,7 @@ fn main() -> Result<()> {
     let mut rng = create_rng(seed);
 
     if let Some(sd) = seed {
-        info!("Seed string to regenerate these exact results: {}", sd);
+        info!("Seed string to regenerate these exact results: {:?}", sd);
     }
 
     // Run the main script
