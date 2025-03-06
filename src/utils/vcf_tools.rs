@@ -1,7 +1,7 @@
 extern crate log;
 
 use super::file_tools::open_file;
-use super::nucleotides::{nuc_to_base, Nuc};
+use super::mutation::Mutation;
 use anyhow::{anyhow, Result};
 use rand::seq::index::sample;
 use rand::Rng;
@@ -51,7 +51,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///
 /// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
-    variant_locations: &HashMap<String, Vec<(usize, Nuc, Nuc)>>,
+    variant_locations: &HashMap<String, Vec<Mutation<'_>>>,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &Path,
@@ -111,38 +111,44 @@ pub fn write_vcf<R: Rng>(
     // insert mutations
     for contig in fasta_order {
         for mutation in &variant_locations[contig] {
-            // If we're going to mutate more than one ploid (i.e. homozygous
-            // for diploid organisms), we must add it to the list.
-            let mut genotype: Vec<usize> = vec![0; ploidy];
-            // By default we'll assume heterozygous (only on one ploid).
-            let mut num_ploids: usize = 1;
-            let is_multiploid = rng.random_bool(0.001);
-            // If ploidy is only 1, then it doesn't matter
-            if is_multiploid && ploidy > 1 {
-                // Mod a random int by ploidy and add to 1 (since we
-                // are modifying at least one copy). For example, with
-                // a ploidy of 2 the right term will produce either 0
-                // or 1, so we modify either 1 or 2 copies.
-                num_ploids = rng.random_range(1..=ploidy);
-            }
-            // for each ploid that has the mutation, change one random
-            // genotype to 1, indicating the mutation is on that copy.
-            for i in sample(rng, ploidy, num_ploids) {
-                genotype[i] = 1;
-            }
-            // Format the output line. Any fields without data will be
-            // a simple period. Quality is set to 37 for all these
-            // variants.
-            let line = format!(
-                "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
-                contig,
-                mutation.0 + 1,
-                nuc_to_base(mutation.2),
-                nuc_to_base(mutation.1),
-                genotype_to_string(genotype)?,
-            );
+            match mutation {
+                Mutation::Snp {
+                    pos,
+                    ref_base,
+                    alt_base,
+                } => {
+                    // If we're going to mutate more than one ploid (i.e. homozygous
+                    // for diploid organisms), we must add it to the list.
+                    let mut genotype: Vec<usize> = vec![0; ploidy];
+                    // By default we'll assume heterozygous (only on one ploid).
+                    let mut num_ploids: usize = 1;
+                    let is_multiploid = rng.random_bool(0.001);
+                    if is_multiploid && ploidy > 1 {
+                        num_ploids = rng.random_range(1..=ploidy);
+                    }
+                    // for each ploid that has the mutation, change one random
+                    // genotype to 1, indicating the mutation is on that copy.
+                    for i in sample(rng, ploidy, num_ploids) {
+                        genotype[i] = 1;
+                    }
+                    // Format the output line. Any fields without data will be
+                    // a simple period. Quality is set to 37 for all these
+                    // variants.
+                    let line = format!(
+                        "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
+                        contig,
+                        pos + 1,
+                        ref_base.to_base(),
+                        alt_base.to_base(),
+                        genotype_to_string(genotype)?,
+                    );
 
-            writeln!(&mut outfile, "{}", line)?;
+                    writeln!(&mut outfile, "{}", line)?;
+                }
+                _ => {
+                    return Err(anyhow!("Only SNPs are currently supported."));
+                }
+            }
         }
     }
     Ok(())
@@ -150,10 +156,12 @@ pub fn write_vcf<R: Rng>(
 
 #[cfg(test)]
 mod tests {
+    use tempdir::TempDir;
+
     use super::*;
     use crate::create_rng;
-    use std::fs;
-    use std::path::{Path, PathBuf};
+    use crate::utils::nucleotides::random_seq;
+    use std::path::PathBuf;
 
     #[test]
     fn test_genotype_to_string() -> Result<()> {
@@ -164,27 +172,32 @@ mod tests {
 
     #[test]
     fn test_write_vcf() -> Result<()> {
-        let variant_locations = HashMap::from([(
+        let mut rng = create_rng(Some("Hello Cruel World"));
+        let seq = random_seq(&mut rng, 100);
+        let variants = HashMap::from([(
             "chr1".to_string(),
-            vec![(3, Nuc::A, Nuc::C), (7, Nuc::C, Nuc::G)],
+            vec![
+                Mutation::new_snp(&seq, 3, seq[3].complement()).unwrap(),
+                Mutation::new_snp(&seq, 7, seq[7].complement()).unwrap(),
+            ],
         )]);
         let fasta_order = vec!["chr1".to_string()];
         let ploidy = 2;
         let reference_path = PathBuf::from("/fake/path/to/H1N1.fa");
+        let tmp_dir = TempDir::new("crusty_neat")?;
+        let output_file_prefix = tmp_dir.path().join("test").to_str().unwrap().to_string();
         let overwrite_output = false;
-        let output_file_prefix = "test";
-        let mut rng = create_rng(Some("Hello Cruel World"));
         write_vcf(
-            &variant_locations,
+            &variants,
             &fasta_order,
             ploidy,
             &reference_path,
             overwrite_output,
-            output_file_prefix,
+            &output_file_prefix,
             &mut rng,
         )?;
-        assert!(Path::new("test.vcf").exists());
-        fs::remove_file("test.vcf")?;
+        let output_file = tmp_dir.path().join("test.vcf");
+        assert!(output_file.exists());
         Ok(())
     }
 }

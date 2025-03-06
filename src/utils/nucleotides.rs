@@ -13,6 +13,18 @@ pub enum Nuc {
     N,
 }
 
+impl Nuc {
+    /// Convert a nucleotide to a base character.
+    pub fn to_base(self) -> char {
+        nuc_to_base(self)
+    }
+
+    /// Complement function for DNA nucleotides.
+    pub fn complement(self) -> Nuc {
+        complement(self)
+    }
+}
+
 /// Convert a base character to a nucleotide.
 pub fn base_to_nuc(base: char) -> Result<Nuc> {
     match base {
@@ -48,7 +60,7 @@ pub fn complement(nuc: Nuc) -> Nuc {
 
 /// Reverse complement function for DNA nucleotides.
 pub fn reverse_complement(seq: &[Nuc]) -> Vec<Nuc> {
-    seq.iter().rev().map(|&n| complement(n)).collect()
+    seq.iter().rev().map(|&n| n.complement()).collect()
 }
 
 pub fn random_nuc<R: Rng>(rng: &mut R) -> Nuc {

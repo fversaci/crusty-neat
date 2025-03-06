@@ -1,19 +1,14 @@
-// This is a basic mutation with SNPs using a basic mutation model.
-// mutate_fasta takes a fasta Hashmap and returns a mutated version and the locations of the
-// mutations introduced
-//
-// mutate_sequence adds actual mutations to the fasta sequence
-
 use super::{
+    mutation::Mutation,
     nucleotides::{Nuc, NucModel},
     types::SeqByContig,
 };
-use anyhow::{anyhow, Result};
-use log::{debug, error};
+use anyhow::Result;
+use log::debug;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 
-/// Mutates a fasta file
+/// Mutates a fasta hashmap of contigs and sequences.
 ///
 /// # Arguments
 ///
@@ -21,6 +16,8 @@ use std::collections::{HashMap, HashSet};
 ///   representing the original sequence.
 /// * `minimum_mutations` - is a usize or None that indicates if there
 ///   is a requested minimum.
+/// * `mutation_rate` - is a f64 or None that indicates the mutation
+///   rate to use.
 /// * `rng` - random number generator for the run
 ///
 /// # Returns
@@ -28,21 +25,15 @@ use std::collections::{HashMap, HashSet};
 /// A tuple with pointers to:
 /// * A hashmap with keys that are contig names and a vector with the
 ///   mutated sequence
-/// * A vector of tuples containing the location and alt of each
-///   variant
-///
-/// This function performs a basic calculation (length x mutation rate
-/// +/- a random amount) and chooses that many positions along the
-/// sequence to mutate. It then builds a return string that represents
-/// the altered sequence and stores all the variants.
-pub fn mutate_fasta<R: Rng>(
-    file_struct: &SeqByContig,
+/// * A vector of mutations for each contig
+pub fn mutate_fasta<'a, R: Rng>(
+    file_struct: &'a SeqByContig,
     minimum_mutations: Option<usize>,
     mutation_rate: Option<f64>,
     rng: &mut R,
-) -> Result<(SeqByContig, HashMap<String, Vec<(usize, Nuc, Nuc)>>)> {
+) -> Result<(SeqByContig, HashMap<String, Vec<Mutation<'a>>>)> {
     let mut return_struct: SeqByContig = HashMap::new();
-    let mut all_variants: HashMap<String, Vec<(usize, Nuc, Nuc)>> = HashMap::new();
+    let mut all_variants: HashMap<String, Vec<Mutation<'a>>> = HashMap::new();
 
     for (name, sequence) in file_struct {
         let sequence_length = sequence.len();
@@ -51,7 +42,7 @@ pub fn mutate_fasta<R: Rng>(
         let num_positions = sequence_length as f64 * mutation_rate.unwrap_or(0.0);
         // Ensure the number of mutations meets the minimum threshold, if provided
         let num_positions = minimum_mutations.unwrap_or(0).max(num_positions as usize);
-        // Generate mutations to the sequence
+        // Generate mutations for the sequence
         let (mutated_record, contig_mutations) = mutate_sequence(sequence, num_positions, rng)?;
         // Store the mutated sequence and corresponding mutations
         return_struct
@@ -63,9 +54,8 @@ pub fn mutate_fasta<R: Rng>(
     Ok((return_struct, all_variants))
 }
 
-/// This function takes a vector of Nuc's and mutates a few positions
-/// at random. It returns the mutated sequence and a list of tuples
-/// with the position and the alts of the SNPs.
+/// This function takes a vector of Nuc's and mutates num_positions at
+/// random. It returns the mutated sequence and a vector of mutations.
 ///
 /// # Arguments
 ///
@@ -77,14 +67,13 @@ pub fn mutate_fasta<R: Rng>(
 /// # Returns
 ///
 /// A tuple with pointers to:
-/// * A vector representing the mutated sequence
-/// * A vector of tuples containing the location, alt and ref of each
-///   variant
-fn mutate_sequence<R: Rng>(
-    sequence: &[Nuc],
+/// * A vector containing the mutated sequence
+/// * A vector of mutations for this sequence
+fn mutate_sequence<'a, R: Rng>(
+    sequence: &'a [Nuc],
     num_positions: usize,
     rng: &mut R,
-) -> Result<(Vec<Nuc>, Vec<(usize, Nuc, Nuc)>)> {
+) -> Result<(Vec<Nuc>, Vec<Mutation<'a>>)> {
     debug!("Adding {} mutations", num_positions);
     let mut mutated_record = sequence.to_owned();
     let mut indexes_to_mutate: HashSet<usize> = HashSet::new();
@@ -100,23 +89,16 @@ fn mutate_sequence<R: Rng>(
     // todo incorporate custom models
     let nucleotide_mutation_model = NucModel::new()?;
     // Will hold the variants added to this sequence
-    let mut sequence_variants: Vec<(usize, Nuc, Nuc)> = Vec::new();
+    let mut sequence_variants: Vec<Mutation<'a>> = Vec::new();
     // for each index, picks a new base
-    for index in indexes_to_mutate {
+    for pos in indexes_to_mutate {
         // remember the reference for later.
-        let reference_base = sequence[index];
+        let reference_base = sequence[pos];
         // pick a new base and assign the position to it.
-        mutated_record[index] = nucleotide_mutation_model.choose_new_nuc(reference_base, rng)?;
-        // This check, only run in debugging mode, ensures that the
-        // model actually mutated the base.
-        if cfg!(debug_assertions) && mutated_record[index] == reference_base {
-            error!("Need to check the code choosing nucleotides");
-            return Err(anyhow!(
-                "BUG: Mutation model failed to mutate the base. This should not happen."
-            ));
-        }
-        // add the location and alt base for the variant
-        sequence_variants.push((index, mutated_record[index], reference_base))
+        mutated_record[pos] = nucleotide_mutation_model.choose_new_nuc(reference_base, rng)?;
+        // construct the snp mutation
+        let snp = Mutation::new_snp(sequence, pos, mutated_record[pos])?;
+        sequence_variants.push(snp);
     }
 
     Ok((mutated_record, sequence_variants))
@@ -124,6 +106,8 @@ fn mutate_sequence<R: Rng>(
 
 #[cfg(test)]
 mod tests {
+    use anyhow::anyhow;
+
     use super::*;
     use crate::{create_rng, utils::nucleotides::random_seq};
 
@@ -147,9 +131,18 @@ mod tests {
         let (mutated, mutations) = mutate_fasta(&file_struct, Some(1), None, &mut rng)?;
         assert!(mutated.contains_key("chr1"));
         assert!(mutations.contains_key("chr1"));
-        let (loc, alt_nuc, ref_nuc) = mutations["chr1"][0];
-        assert_eq!(ref_nuc, seq[loc]);
-        assert_ne!(alt_nuc, ref_nuc);
+        let mutation = mutations["chr1"][0].clone();
+        match mutation {
+            Mutation::Snp {
+                pos,
+                ref_base,
+                alt_base,
+            } => {
+                assert_eq!(seq[pos], *ref_base);
+                assert_ne!(alt_base, *ref_base);
+            }
+            _ => return Err(anyhow!("Expected a SNP mutation")),
+        }
         Ok(())
     }
 
