@@ -53,7 +53,6 @@ fn main() -> Result<()> {
         info!("Overriding configuration from command line");
         config.override_with(&arg_config)?;
     }
-    dbg!(&config);
 
     let _loggers;
     let term_log = TermLogger::new(
@@ -70,6 +69,7 @@ fn main() -> Result<()> {
     }
 
     info!("Begin processing");
+    debug!("RunConfiguration: {:?}", config);
 
     // Generate the RNG used for this run
     let seed = config.rng_seed.as_deref();
