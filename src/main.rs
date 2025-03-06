@@ -1,16 +1,7 @@
-extern crate clap;
-extern crate itertools;
-extern crate log;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-extern crate simplelog;
-extern crate statrs;
-
 mod utils;
 
-use crate::clap::Parser;
 use anyhow::Result;
+use clap::Parser;
 use log::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;

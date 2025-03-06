@@ -1,5 +1,3 @@
-extern crate log;
-
 use super::file_tools::open_file;
 use super::mutation::Mutation;
 use anyhow::{anyhow, Result};
