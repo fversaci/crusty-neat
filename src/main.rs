@@ -51,7 +51,7 @@ fn main() -> Result<()> {
     // override values from the command line (if any)
     if let Some(arg_config) = args.config {
         info!("Overriding configuration from command line");
-        config.override_with(&arg_config);
+        config.override_with(&arg_config)?;
     }
     dbg!(&config);
 

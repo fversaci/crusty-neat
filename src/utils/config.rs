@@ -99,10 +99,10 @@ impl RunConfiguration {
     }
     /// Override the values of the current configuration with the
     /// non-None values of another configuration
-    pub fn override_with(&mut self, other: &RunConfiguration) {
+    pub fn override_with(&mut self, other: &RunConfiguration) -> Result<()> {
         // Serialize both structs into JSON `Value`
-        let mut a_json: Value = serde_json::to_value(&mut *self).unwrap();
-        let b_json: Value = serde_json::to_value(other).unwrap();
+        let mut a_json: Value = serde_json::to_value(&mut *self)?;
+        let b_json: Value = serde_json::to_value(other)?;
 
         // Iterate over the fields of `b` and override non-`None` values in `a`
         if let Some(b_fields) = b_json.as_object() {
@@ -117,7 +117,8 @@ impl RunConfiguration {
         }
 
         // Deserialize back into `RunConfiguration`
-        *self = serde_json::from_value(a_json).unwrap();
+        *self = serde_json::from_value(a_json)?;
+        Ok(())
     }
     /// Read a configuration from a yaml file
     pub fn from_file(path: &PathBuf) -> Result<Self> {
@@ -150,7 +151,7 @@ impl RunConfiguration {
         }
         // check that mutation rate is between 0 and 0.5
         if let Some(rate) = self.mutation_rate {
-            if rate < 0.0 || rate > 0.5 {
+            if !(0.0..=0.5).contains(&rate) {
                 return Err(anyhow!("Mutation rate should be between 0 and 0.5"));
             }
         }
@@ -224,7 +225,7 @@ mod tests {
             output_prefix: None,
         };
 
-        a.override_with(&b);
+        a.override_with(&b).unwrap();
 
         assert_eq!(a.reference, Some(PathBuf::from("ref2.fa")));
         assert_eq!(a.read_len, Some(150));
