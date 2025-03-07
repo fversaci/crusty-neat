@@ -1,9 +1,9 @@
 use super::file_tools::open_file;
 use super::mutation::Mutation;
+use super::types::MutByContig;
 use anyhow::{anyhow, Result};
 use rand::seq::index::sample;
 use rand::Rng;
-use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
@@ -49,7 +49,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///
 /// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
-    variant_locations: &HashMap<String, Vec<Mutation<'_>>>,
+    variant_locations: &MutByContig<'_>,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &Path,
@@ -159,6 +159,7 @@ mod tests {
     use super::*;
     use crate::create_rng;
     use crate::utils::nucleotides::random_seq;
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
     #[test]

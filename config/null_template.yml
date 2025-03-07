@@ -3,7 +3,6 @@ read_len: null
 coverage: null
 
 mutation_rate: null
-minimum_mutations: null
 rng_seed: null
 
 ploidy: null

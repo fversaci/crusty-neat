@@ -63,9 +63,6 @@ pub struct RunConfiguration {
     /// Overwrite output files
     #[arg(long)]
     pub overwrite_output: Option<bool>,
-    /// Minimum number of mutations to generate
-    #[arg(long)]
-    pub minimum_mutations: Option<usize>,
     #[arg(long)]
     /// Output directory
     pub output_dir: Option<PathBuf>,
@@ -92,7 +89,6 @@ impl RunConfiguration {
             produce_bam: Some(false),
             rng_seed: None,
             overwrite_output: Some(false),
-            minimum_mutations: None,
             output_dir: None,
             output_prefix: Some("crusty_out".to_string()),
         }
@@ -200,7 +196,6 @@ mod tests {
             produce_bam: Some(false),
             rng_seed: None,
             overwrite_output: Some(false),
-            minimum_mutations: None,
             output_dir: None,
             output_prefix: Some("crusty_out".to_string()),
         };
@@ -220,7 +215,6 @@ mod tests {
             produce_bam: None,
             rng_seed: Some("1234".to_string()),
             overwrite_output: None,
-            minimum_mutations: Some(10),
             output_dir: Some(PathBuf::from("output")),
             output_prefix: None,
         };
@@ -241,7 +235,6 @@ mod tests {
         assert_eq!(a.produce_bam, Some(false));
         assert_eq!(a.rng_seed, Some("1234".to_string()));
         assert_eq!(a.overwrite_output, Some(false));
-        assert_eq!(a.minimum_mutations, Some(10));
         assert_eq!(a.output_dir, Some(PathBuf::from("output")));
         assert_eq!(a.output_prefix, Some("crusty_out".to_string()));
     }

@@ -86,45 +86,6 @@ pub fn string_to_seq(s: &str) -> Result<Vec<Nuc>> {
     s.chars().map(base_to_nuc).collect()
 }
 
-pub struct NucModel {
-    a: WeightedIndex<u32>,
-    c: WeightedIndex<u32>,
-    g: WeightedIndex<u32>,
-    t: WeightedIndex<u32>,
-}
-
-impl NucModel {
-    /// Default mutation model based on the original from NEAT 2.0
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            a: WeightedIndex::new(vec![0, 17, 69, 14])?,
-            c: WeightedIndex::new(vec![16, 0, 17, 67])?,
-            g: WeightedIndex::new(vec![67, 17, 0, 16])?,
-            t: WeightedIndex::new(vec![14, 69, 16, 0])?,
-        })
-    }
-
-    /// Given a base, choose a new base based on the weights in the model
-    pub fn choose_new_nuc<R: Rng>(&self, base: Nuc, rng: &mut R) -> Result<Nuc> {
-        // Pick the weights list for the base that was input
-        let dist = match base {
-            Nuc::A => &self.a,
-            Nuc::C => &self.c,
-            Nuc::G => &self.g,
-            Nuc::T => &self.t,
-            _ => return Err(anyhow!("Invalid input base")),
-        };
-        // Sample the distribution
-        match dist.sample(rng) {
-            0 => Ok(Nuc::A),
-            1 => Ok(Nuc::C),
-            2 => Ok(Nuc::G),
-            3 => Ok(Nuc::T),
-            _ => Err(anyhow!("Invalid output base")),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

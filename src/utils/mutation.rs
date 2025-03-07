@@ -1,8 +1,8 @@
 use super::nucleotides::Nuc;
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 
 /// A genomic mutation (SNP, insertion, deletion)
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum Mutation<'a> {
     Snp {
@@ -22,7 +22,14 @@ pub enum Mutation<'a> {
     },
 }
 
-#[allow(unused)]
+/// The type of mutation
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum MutationType {
+    Snp,
+    Ins,
+    Del,
+}
+
 impl<'a> Mutation<'a> {
     /// Get initial position of the mutation
     pub fn get_pos(&self) -> usize {

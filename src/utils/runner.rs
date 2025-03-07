@@ -2,11 +2,13 @@ use super::config::RunConfiguration;
 use super::fasta_tools::{read_fasta, write_fasta};
 use super::fastq_tools::write_fastq;
 use super::make_reads::generate_reads;
-use super::mutate::mutate_fasta;
+use super::mutate::mutate_genome;
 use super::nucleotides::Nuc;
 use super::read_models::read_quality_score_model_json;
 use super::vcf_tools::write_vcf;
 use crate::utils::file_tools::check_create_dir;
+use crate::utils::mutate::apply_mutations;
+use crate::utils::mutation_model::MutationModel;
 use anyhow::Result;
 use log::info;
 use rand::seq::SliceRandom;
@@ -43,28 +45,30 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         "Mapping reference fasta file: {}",
         &config.reference.as_ref().unwrap().display()
     );
-    let (fasta_map, fasta_order) = read_fasta(config.reference.as_ref().unwrap())?;
+    let (ref_genome, contig_order) = read_fasta(config.reference.as_ref().unwrap())?;
 
-    // Load models that will be used for the runs.
-    // For now we will use the one supplied, pulled directly from
-    // NEAT2.0's original model.
+    // Load the quality score model, which simulates sequencing error rates
+    // by generating quality scores for the produced reads.
+    // Currently, we use the original model from NEAT2.0.
     let default_quality_score_model_file = "models/neat_quality_score_model.json";
     let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
 
-    // Mutate the reference and recording the variant locations.
+    // Generate a default mutation model for the reference genome
+    let mut_model = MutationModel::all_contigs(&ref_genome, config.mutation_rate.unwrap_or(0.0));
+
+    // serialize the mutation model to a yaml file
+    mut_model.write_to_file(&output_prefix)?;
+
+    // Mutate the reference and record the variant locations.
     info!("Mutating reference.");
-    let (mutated_map, variant_locations) = mutate_fasta(
-        &fasta_map,
-        config.minimum_mutations,
-        config.mutation_rate,
-        rng,
-    )?;
+    let mutations = mutate_genome(&ref_genome, &mut_model, rng)?;
+    let mut_genome = apply_mutations(&ref_genome, &mutations)?;
 
     if config.produce_fasta == Some(true) {
         info!("Outputting fasta file");
         write_fasta(
-            &mutated_map,
-            &fasta_order,
+            &mut_genome,
+            &contig_order,
             config.overwrite_output.unwrap(),
             &output_prefix,
         )?;
@@ -73,8 +77,8 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     if config.produce_vcf == Some(true) {
         info!("Writing vcf file");
         write_vcf(
-            &variant_locations,
-            &fasta_order,
+            &mutations,
+            &contig_order,
             config.ploidy.unwrap(),
             &config.reference.unwrap(),
             config.overwrite_output.unwrap(),
@@ -85,7 +89,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
 
     if config.produce_fastq == Some(true) {
         let mut read_sets: HashSet<Vec<Nuc>> = HashSet::new();
-        for (_name, sequence) in mutated_map.iter() {
+        for (_name, sequence) in mut_genome.iter() {
             // defined as a set of read sequences that should cover
             // the mutated sequence `coverage` number of times
             let data_set = generate_reads(

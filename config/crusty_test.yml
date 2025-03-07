@@ -2,8 +2,7 @@ reference: test_data/ecoli.fa
 read_len: 10
 coverage: 3
 
-mutation_rate: null
-minimum_mutations: null
+mutation_rate: 0.001
 rng_seed: null
 
 ploidy: 9
