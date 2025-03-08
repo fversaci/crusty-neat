@@ -2,7 +2,8 @@ reference: null
 read_len: null
 coverage: null
 
-mutation_rate: null
+def_mutation_rate: null
+mutation_model: null
 rng_seed: null
 
 ploidy: null

@@ -2,7 +2,7 @@ reference: test_data/ecoli.fa
 read_len: 10
 coverage: 3
 
-mutation_rate: 0.001
+def_mutation_rate: 0.001
 mutation_model: config/ecoli.mut_model.yml
 rng_seed: null
 
