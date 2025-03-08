@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to the configuration file
-    #[arg(short = 'C', long)]
+    #[arg(short = 'c', long)]
     pub config_file: Option<PathBuf>,
     /// Log level: TRACE, DEBUG, INFO, WARN, ERROR
     #[arg(long, default_value_t = LevelFilter::Info)]
@@ -30,9 +30,12 @@ pub struct RunConfiguration {
     /// Number of reads to generate
     #[arg(long)]
     pub coverage: Option<usize>,
-    /// Mutation rate
+    /// Default mutation rate
     #[arg(long)]
-    pub mutation_rate: Option<f64>,
+    pub def_mutation_rate: Option<f64>,
+    /// Path to the mutation model
+    #[arg(long)]
+    pub mutation_model: Option<PathBuf>,
     /// Ploidy of the organism
     #[arg(long)]
     pub ploidy: Option<usize>,
@@ -63,7 +66,7 @@ pub struct RunConfiguration {
     /// Overwrite output files
     #[arg(long)]
     pub overwrite_output: Option<bool>,
-    #[arg(long)]
+    #[arg(long, short = 'o')]
     /// Output directory
     pub output_dir: Option<PathBuf>,
     /// Prefix for the output files
@@ -78,7 +81,8 @@ impl RunConfiguration {
             reference: None,
             read_len: Some(150),
             coverage: Some(10),
-            mutation_rate: Some(0.001),
+            def_mutation_rate: Some(0.001),
+            mutation_model: None,
             ploidy: Some(2),
             paired_ended: Some(false),
             fragment_mean: None,
@@ -120,7 +124,7 @@ impl RunConfiguration {
     pub fn from_file(path: &PathBuf) -> Result<Self> {
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
-        let conf: RunConfiguration = serde_yaml::from_reader(reader)?;
+        let conf: Self = serde_yaml::from_reader(reader)?;
         Ok(conf)
     }
     /// Check if the configuration for the run is valid
@@ -146,7 +150,7 @@ impl RunConfiguration {
             ));
         }
         // check that mutation rate is between 0 and 0.5
-        if let Some(rate) = self.mutation_rate {
+        if let Some(rate) = self.def_mutation_rate {
             if !(0.0..=0.5).contains(&rate) {
                 return Err(anyhow!("Mutation rate should be between 0 and 0.5"));
             }
@@ -185,7 +189,8 @@ mod tests {
             reference: Some(PathBuf::from("ref.fa")),
             read_len: Some(150),
             coverage: Some(10),
-            mutation_rate: Some(0.001),
+            def_mutation_rate: Some(0.001),
+            mutation_model: None,
             ploidy: Some(2),
             paired_ended: Some(false),
             fragment_mean: None,
@@ -204,7 +209,8 @@ mod tests {
             reference: Some(PathBuf::from("ref2.fa")),
             read_len: None,
             coverage: Some(20),
-            mutation_rate: None,
+            def_mutation_rate: None,
+            mutation_model: Some(PathBuf::from("some_model.yml")),
             ploidy: None,
             paired_ended: Some(true),
             fragment_mean: Some(200.0),
@@ -224,7 +230,8 @@ mod tests {
         assert_eq!(a.reference, Some(PathBuf::from("ref2.fa")));
         assert_eq!(a.read_len, Some(150));
         assert_eq!(a.coverage, Some(20));
-        assert_eq!(a.mutation_rate, Some(0.001));
+        assert_eq!(a.def_mutation_rate, Some(0.001));
+        assert_eq!(a.mutation_model, Some(PathBuf::from("some_model.yml")));
         assert_eq!(a.ploidy, Some(2));
         assert_eq!(a.paired_ended, Some(true));
         assert_eq!(a.fragment_mean, Some(200.0));
@@ -262,13 +269,13 @@ mod tests {
         conf.overwrite_output = Some(false);
         assert!(conf.check().is_ok());
 
-        conf.mutation_rate = Some(-0.2);
+        conf.def_mutation_rate = Some(-0.2);
         assert!(conf.check().is_err());
-        conf.mutation_rate = Some(0.6);
+        conf.def_mutation_rate = Some(0.6);
         assert!(conf.check().is_err());
-        conf.mutation_rate = Some(0.001);
+        conf.def_mutation_rate = Some(0.001);
         assert!(conf.check().is_ok());
-        conf.mutation_rate = None;
+        conf.def_mutation_rate = None;
         assert!(conf.check().is_ok());
 
         conf.produce_fastq = Some(true);

@@ -15,8 +15,7 @@ use std::collections::{HashMap, HashSet};
 ///
 /// * `genome` - A hashmap of contig names (keys) and a vector
 ///   representing the original sequence.
-/// * `mutation_rate` - is a f64 or None that indicates the mutation
-///   rate to use.
+/// * `mutation_model` - The mutation model for the run
 /// * `rng` - random number generator for the run
 ///
 /// # Returns
@@ -29,15 +28,16 @@ pub fn mutate_genome<'a, R: Rng>(
     rng: &mut R,
 ) -> Result<MutByContig<'a>> {
     let mut mutations: MutByContig = HashMap::new();
-    for (contig, regions) in &mutation_model.mut_rates {
-        let sequence = &genome[contig];
+    let mut_rates = mutation_model.mut_rates.clone().unwrap();
+    for (contig, regions) in mut_rates {
+        let sequence = &genome[&contig];
         for region in regions {
             debug!(
                 "Segment of {}: from {} to {}.",
                 contig, region.start, region.end
             );
             // Generate mutations for the region
-            let contig_mutations = mutate_region(sequence, mutation_model, region, rng)?;
+            let contig_mutations = mutate_region(sequence, mutation_model, &region, rng)?;
             // Add the generated mutations to the list of mutations for this contig
             mutations
                 .entry(contig.clone())
@@ -131,7 +131,7 @@ mod tests {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
-        let mut_model = MutationModel::all_contigs(&genome, 0.1);
+        let mut_model = MutationModel::all_contigs(&genome, 0.1)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
         let mutation = mutations["chr1"][0].clone();
@@ -154,7 +154,7 @@ mod tests {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
-        let mut_model = MutationModel::all_contigs(&genome, 0.0);
+        let mut_model = MutationModel::all_contigs(&genome, 0.0)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
         assert!(mutations["chr1"].is_empty());

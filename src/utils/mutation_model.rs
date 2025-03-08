@@ -1,16 +1,17 @@
 use super::{mutation::MutationType, nucleotides::Nuc, types::SeqByContig};
 use anyhow::{anyhow, Result};
+use log::info;
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 /// A model for mutation rates and probabilities of different mutation types.
 #[derive(Serialize, Deserialize)]
 pub struct MutationModel {
     /// Mutation rates by contig.
-    pub mut_rates: MutRateByContig,
+    pub mut_rates: Option<MutRateByContig>,
     /// Probabilities of different mutation types.
     pub mut_probabilities: MutProbabilities,
     /// SNP mutation probabilities.
@@ -26,34 +27,52 @@ impl MutationModel {
     pub fn get_mut_probability(&self, mut_type: MutationType) -> f64 {
         *self.mut_probabilities.p.get(&mut_type).unwrap_or(&0.0)
     }
-    /// Create a mutation model with the given mutation rate for all contigs.
-    pub fn all_contigs(genome: &SeqByContig, mutation_rate: f64) -> Self {
+    pub fn set_default_mut_rates(&mut self, genome: &SeqByContig, mutation_rate: Option<f64>) -> Result<()> {
+        if mutation_rate.is_none() {
+            return Err(anyhow!("Mutation rate must be specified to set default mutation rates."));
+        }
         let mut mut_rates = MutRateByContig::new();
         for (contig, seq) in genome {
             let mut_rates_by_contig = vec![Region {
                 start: 0,
                 end: seq.len(),
-                rate: mutation_rate,
+                rate: mutation_rate.unwrap(),
             }];
             mut_rates.insert(contig.to_string(), mut_rates_by_contig);
         }
+        let mut_rates = Some(mut_rates);
+        self.mut_rates = mut_rates;
+        Ok(())
+    }
+    /// Create a mutation model with the given mutation rate for all contigs.
+    pub fn all_contigs(genome: &SeqByContig, mutation_rate: f64) -> Result<Self> {
         let snp_model = SnpModel::default();
         let ins_model = InsModel::default();
         let del_model = DelModel::default();
-        MutationModel {
-            mut_rates,
+        let mut mm = MutationModel {
+            mut_rates: None,
             mut_probabilities: MutProbabilities::default(),
             snp_model,
             ins_model,
             del_model,
-        }
+        };
+        mm.set_default_mut_rates(genome, Some(mutation_rate))?;
+        Ok(mm)
     }
     // Serialize mutation model to a yaml file.
     pub fn write_to_file(&self, output_prefix: &str) -> Result<()> {
-        let filename = format!("{}.mut_model.yaml", output_prefix);
+        let filename = format!("{}.mut_model.yml", output_prefix);
+        info!("Writing full mutation model to {}", filename);
         let file = std::fs::File::create(&filename)?;
         serde_yaml::to_writer(&file, self)?;
         Ok(())
+    }
+    /// Read mutation model from a yaml file
+    pub fn from_file(path: &PathBuf) -> Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let reader = std::io::BufReader::new(file);
+        let conf: Self = serde_yaml::from_reader(reader)?;
+        Ok(conf)
     }
 }
 
@@ -61,7 +80,7 @@ impl MutationModel {
 pub type MutRateByContig = HashMap<String, Vec<Region>>;
 
 /// A struct for storing a region of a contig with a mutation rate.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Region {
     pub start: usize,
     pub end: usize,

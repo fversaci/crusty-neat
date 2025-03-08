@@ -53,8 +53,19 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     let default_quality_score_model_file = "models/neat_quality_score_model.json";
     let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
 
-    // Generate a default mutation model for the reference genome
-    let mut_model = MutationModel::all_contigs(&ref_genome, config.mutation_rate.unwrap_or(0.0));
+    // Read mutation model from file or generate a default one
+    let mut mut_model;
+    if let Some(mutation_model_file) = &config.mutation_model {
+        info!("Reading mutation model from file {}", mutation_model_file.display());
+        mut_model = MutationModel::from_file(mutation_model_file)?;
+        if mut_model.mut_rates.is_none() {
+            info!("Mutation rates not defined, setting default ones");
+            mut_model.set_default_mut_rates(&ref_genome, config.def_mutation_rate)?;
+        }
+    } else {
+        info!("Creating mutation model from scratch");
+        mut_model = MutationModel::all_contigs(&ref_genome, config.def_mutation_rate.unwrap_or(0.0))?;
+    }
 
     // serialize the mutation model to a yaml file
     mut_model.write_to_file(&output_prefix)?;
