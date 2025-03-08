@@ -119,7 +119,7 @@ impl Default for SnpModel {
             a: WeightedIndex::new(vec![0.0, 0.17, 0.69, 0.14]).unwrap(),
             c: WeightedIndex::new(vec![0.16, 0.0, 0.17, 0.67]).unwrap(),
             g: WeightedIndex::new(vec![0.67, 0.17, 0.0, 0.16]).unwrap(),
-            t: WeightedIndex::new(vec![0.14, 0.69, 0.16, 0.0]).unwrap(),
+            t: WeightedIndex::new(vec![0.14, 0.69, 0.17, 0.0]).unwrap(),
         }
     }
 }
