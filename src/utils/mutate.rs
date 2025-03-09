@@ -7,6 +7,7 @@ use super::{
 use anyhow::{anyhow, Result};
 use log::debug;
 use rand::Rng;
+use rand_distr::{Distribution, Binomial};
 use std::collections::{HashMap, HashSet};
 
 /// Mutates a genome by generating mutations for each contig.
@@ -68,9 +69,10 @@ fn mutate_region<'a, R: Rng>(
     region: &Region,
     rng: &mut R,
 ) -> Result<Vec<Mutation<'a>>> {
-    // Calculate the number of mutations based on the mutation rate
+    // Calculate the number of mutations using a Binomial distribution
     let region_len = region.end - region.start;
-    let num_mutations = (region_len as f64 * region.rate).round() as usize;
+    let bin = Binomial::new(region_len as u64, region.rate)?;
+    let num_mutations: usize = bin.sample(rng).try_into()?;
     debug!("Adding {} mutations", num_mutations);
     let mut indexes_to_mutate: HashSet<usize> = HashSet::new();
     // choose num_positions distinct indexes to mutate
@@ -82,7 +84,7 @@ fn mutate_region<'a, R: Rng>(
         indexes_to_mutate.insert(index);
     }
     // Get the snp model
-    let nucleotide_mutation_model = &mutation_model.snp_model;
+    let snp_model = &mutation_model.snp_model;
     // Will hold the variants added to this sequence
     let mut sequence_variants: Vec<Mutation<'a>> = Vec::new();
     // for each index, picks a new base
@@ -90,7 +92,7 @@ fn mutate_region<'a, R: Rng>(
         // remember the reference for later.
         let reference_base = sequence[pos];
         // pick a new base and assign the position to it.
-        let alt_base = nucleotide_mutation_model.choose_new_nuc(reference_base, rng)?;
+        let alt_base = snp_model.choose_new_nuc(reference_base, rng)?;
         // construct the snp mutation
         let snp = Mutation::new_snp(sequence, pos, alt_base)?;
         sequence_variants.push(snp);
