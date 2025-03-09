@@ -3,7 +3,7 @@ read_len: 10
 coverage: 3
 
 def_mutation_rate: 0.001
-mutation_model: config/ecoli.mut_model.yml
+mutation_model: config/mut_model.yml
 rng_seed: null
 
 ploidy: 9

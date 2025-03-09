@@ -1,14 +1,16 @@
 use super::{
-    mutation::Mutation,
-    mutation_model::{MutationModel, Region},
+    mutation::{Mutation, MutationType},
+    mutation_model::Region,
     nucleotides::Nuc,
+    ref_mutation_model::RefMutationModel,
     types::{MutByContig, SeqByContig},
 };
 use anyhow::{anyhow, Result};
 use log::debug;
 use rand::Rng;
-use rand_distr::{Distribution, Binomial};
+use rand_distr::{Binomial, Distribution};
 use std::collections::{HashMap, HashSet};
+use strum::IntoEnumIterator;
 
 /// Mutates a genome by generating mutations for each contig.
 ///
@@ -25,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 /// * A vector of mutations for each contig
 pub fn mutate_genome<'a, R: Rng>(
     genome: &'a SeqByContig,
-    mutation_model: &MutationModel,
+    mutation_model: &RefMutationModel,
     rng: &mut R,
 ) -> Result<MutByContig<'a>> {
     let mut mutations: MutByContig = HashMap::new();
@@ -65,12 +67,25 @@ pub fn mutate_genome<'a, R: Rng>(
 /// * A vector of mutations for this region
 fn mutate_region<'a, R: Rng>(
     sequence: &'a [Nuc],
-    mutation_model: &MutationModel,
+    mutation_model: &RefMutationModel,
     region: &Region,
     rng: &mut R,
 ) -> Result<Vec<Mutation<'a>>> {
-    // Calculate the number of mutations using a Binomial distribution
+    // calculate the number of each mutation using a Binomial
+    // distribution
     let region_len = region.end - region.start;
+
+    /* WORK IN PROGRESS
+    let mut num_mutations: HashMap<MutationType, usize> = HashMap::new();
+    for m in MutationType::iter() {
+        let m_rate = region.rate * mutation_model.mm.get_mut_probability(m);
+        let bin = Binomial::new(region_len as u64, m_rate)?;
+        let num_mut: usize = bin.sample(rng).try_into()?;
+        num_mutations.insert(m, num_mut);
+        debug!("Adding {} {} mutations", num_mut, m);
+    }
+    */
+
     let bin = Binomial::new(region_len as u64, region.rate)?;
     let num_mutations: usize = bin.sample(rng).try_into()?;
     debug!("Adding {} mutations", num_mutations);
@@ -84,7 +99,7 @@ fn mutate_region<'a, R: Rng>(
         indexes_to_mutate.insert(index);
     }
     // Get the snp model
-    let snp_model = &mutation_model.snp_model;
+    let snp_model = &mutation_model.mm.snp_model;
     // Will hold the variants added to this sequence
     let mut sequence_variants: Vec<Mutation<'a>> = Vec::new();
     // for each index, picks a new base
@@ -133,7 +148,7 @@ mod tests {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
-        let mut_model = MutationModel::all_contigs(&genome, 0.1)?;
+        let mut_model = RefMutationModel::new_all_contigs(&genome, 0.1)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
         let mutation = mutations["chr1"][0].clone();
@@ -156,7 +171,7 @@ mod tests {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
         let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
-        let mut_model = MutationModel::all_contigs(&genome, 0.0)?;
+        let mut_model = RefMutationModel::new_all_contigs(&genome, 0.0)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
         assert!(mutations["chr1"].is_empty());

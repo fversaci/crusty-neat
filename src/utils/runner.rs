@@ -8,7 +8,7 @@ use super::read_models::read_quality_score_model_json;
 use super::vcf_tools::write_vcf;
 use crate::utils::file_tools::check_create_dir;
 use crate::utils::mutate::apply_mutations;
-use crate::utils::mutation_model::MutationModel;
+use crate::utils::ref_mutation_model::RefMutationModel;
 use anyhow::Result;
 use log::info;
 use rand::seq::SliceRandom;
@@ -56,15 +56,18 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     // Read mutation model from file or generate a default one
     let mut mut_model;
     if let Some(mutation_model_file) = &config.mutation_model {
-        info!("Reading mutation model from file {}", mutation_model_file.display());
-        mut_model = MutationModel::from_file(mutation_model_file)?;
-        if mut_model.mut_rates.is_none() {
-            info!("Mutation rates not defined, setting default ones");
-            mut_model.set_default_mut_rates(&ref_genome, config.def_mutation_rate)?;
-        }
+        info!(
+            "Reading mutation model from file {}",
+            mutation_model_file.display()
+        );
+        mut_model = RefMutationModel::from_file(mutation_model_file)?;
+        mut_model.attach_ref_genome(&ref_genome, config.def_mutation_rate)?;
     } else {
         info!("Creating mutation model from scratch");
-        mut_model = MutationModel::all_contigs(&ref_genome, config.def_mutation_rate.unwrap_or(0.0))?;
+        mut_model = RefMutationModel::new_all_contigs(
+            &ref_genome,
+            config.def_mutation_rate.unwrap_or(0.0),
+        )?;
     }
 
     // serialize the mutation model to a yaml file

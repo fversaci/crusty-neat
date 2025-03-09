@@ -10,6 +10,7 @@ pub mod mutation_model;
 pub mod nucleotides;
 pub mod quality_scores;
 pub mod read_models;
+pub mod ref_mutation_model;
 pub mod runner;
 pub mod types;
 pub mod vcf_tools;

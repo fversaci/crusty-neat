@@ -1,6 +1,7 @@
 use super::nucleotides::Nuc;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use strum_macros::{Display, EnumIter, EnumString};
 
 /// A genomic mutation (SNP, insertion, deletion)
 #[derive(Debug, Clone)]
@@ -23,7 +24,9 @@ pub enum Mutation<'a> {
 }
 
 /// The type of mutation
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize, EnumIter, EnumString, Display,
+)]
 pub enum MutationType {
     Snp,
     Ins,

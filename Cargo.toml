@@ -19,3 +19,5 @@ serde = { version = "1.0.218", features = ["derive"] }
 statrs = "0.18.0"
 anyhow = "1.0.97"
 tempdir = "0.3.7"
+strum_macros = "0.27.1"
+strum = "0.27.1"
