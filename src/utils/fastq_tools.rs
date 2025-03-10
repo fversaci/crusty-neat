@@ -107,7 +107,6 @@ mod tests {
     use crate::create_rng;
     use crate::utils::nucleotides::random_seq;
     use std::fs;
-    use std::path::{Path, PathBuf};
 
     #[test]
     fn test_write_fastq_single() -> Result<()> {
