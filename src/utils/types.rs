@@ -5,4 +5,4 @@ use std::collections::HashMap;
 pub type SeqByContig = HashMap<String, Vec<Nuc>>;
 
 /// Maps contig names to their mutations
-pub type MutByContig<'a> = HashMap<String, Vec<Mutation<'a>>>;
+pub type MutByContig = HashMap<String, Vec<Mutation>>;

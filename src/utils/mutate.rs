@@ -1,3 +1,5 @@
+use crate::utils::mutation;
+
 use super::{
     mutation::{Mutation, MutationType},
     mutation_model::Region,
@@ -9,7 +11,7 @@ use anyhow::{anyhow, Result};
 use log::debug;
 use rand::Rng;
 use rand_distr::{Binomial, Distribution};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use strum::IntoEnumIterator;
 
 /// Mutates a genome by generating mutations for each contig.
@@ -25,11 +27,11 @@ use strum::IntoEnumIterator;
 ///
 /// A tuple with pointers to:
 /// * A vector of mutations for each contig
-pub fn mutate_genome<'a, R: Rng>(
-    genome: &'a SeqByContig,
+pub fn mutate_genome<R: Rng>(
+    genome: &SeqByContig,
     mutation_model: &RefMutationModel,
     rng: &mut R,
-) -> Result<MutByContig<'a>> {
+) -> Result<MutByContig> {
     let mut mutations: MutByContig = HashMap::new();
     let mut_rates = mutation_model.mut_rates.clone().unwrap();
     for (contig, regions) in mut_rates {
@@ -65,62 +67,45 @@ pub fn mutate_genome<'a, R: Rng>(
 ///
 /// A tuple with pointers to:
 /// * A vector of mutations for this region
-fn mutate_region<'a, R: Rng>(
-    sequence: &'a [Nuc],
+fn mutate_region<R: Rng>(
+    sequence: &[Nuc],
     mutation_model: &RefMutationModel,
     region: &Region,
     rng: &mut R,
-) -> Result<Vec<Mutation<'a>>> {
-    // calculate the number of each mutation using a Binomial
-    // distribution
+) -> Result<Vec<Mutation>> {
+    // calculate the number of mutations (for each mutation) using a
+    // Binomial distribution
     let region_len = region.end - region.start;
 
-    /* WORK IN PROGRESS
-    let mut num_mutations: HashMap<MutationType, usize> = HashMap::new();
+    // generate mutations
+    let mut mutations: Vec<Mutation> = Vec::new();
     for m in MutationType::iter() {
         let m_rate = region.rate * mutation_model.mm.get_mut_probability(m);
         let bin = Binomial::new(region_len as u64, m_rate)?;
         let num_mut: usize = bin.sample(rng).try_into()?;
-        num_mutations.insert(m, num_mut);
         debug!("Adding {} {} mutations", num_mut, m);
+        let positions: Vec<usize> = (0..num_mut)
+            .map(|_| rng.random_range(region.start..region.end))
+            .collect();
+        mutations.extend(
+            positions
+                .into_iter()
+                .filter_map(|pos| mutation_model.create_mutation(m, sequence, pos, rng).ok()),
+        );
     }
-    */
+    // sort and filter out incompatible mutations
+    debug!("Total of {} potential mutations", mutations.len());
+    mutation::sort_filter_overlap(&mut mutations);
+    debug!(
+        "{} mutations remain, after removing overlapping ones",
+        mutations.len()
+    );
 
-    let bin = Binomial::new(region_len as u64, region.rate)?;
-    let num_mutations: usize = bin.sample(rng).try_into()?;
-    debug!("Adding {} mutations", num_mutations);
-    let mut indexes_to_mutate: HashSet<usize> = HashSet::new();
-    // choose num_positions distinct indexes to mutate
-    while indexes_to_mutate.len() < num_mutations {
-        let index = rng.random_range(region.start..region.end);
-        if sequence[index] == Nuc::N {
-            continue;
-        }
-        indexes_to_mutate.insert(index);
-    }
-    // Get the snp model
-    let snp_model = &mutation_model.mm.snp_model;
-    // Will hold the variants added to this sequence
-    let mut sequence_variants: Vec<Mutation<'a>> = Vec::new();
-    // for each index, picks a new base
-    for pos in indexes_to_mutate {
-        // remember the reference for later.
-        let reference_base = sequence[pos];
-        // pick a new base and assign the position to it.
-        let alt_base = snp_model.choose_new_nuc(reference_base, rng)?;
-        // construct the snp mutation
-        let snp = Mutation::new_snp(sequence, pos, alt_base)?;
-        sequence_variants.push(snp);
-    }
-
-    Ok(sequence_variants)
+    Ok(mutations)
 }
 
 /// Applies the mutations to the reference genome and returns the new genome.
-pub fn apply_mutations<'a>(
-    genome: &'a SeqByContig,
-    mutations: &MutByContig<'a>,
-) -> Result<SeqByContig> {
+pub fn apply_mutations(genome: &SeqByContig, mutations: &MutByContig) -> Result<SeqByContig> {
     let mut new_genome = genome.clone();
     for (contig, mutations) in mutations {
         let sequence = new_genome.get_mut(contig).unwrap();
@@ -158,8 +143,8 @@ mod tests {
                 ref_base,
                 alt_base,
             } => {
-                assert_eq!(seq[pos], *ref_base);
-                assert_ne!(alt_base, *ref_base);
+                assert_eq!(seq[pos], ref_base);
+                assert_ne!(alt_base, ref_base);
             }
             _ => return Err(anyhow!("Expected a SNP mutation")),
         }

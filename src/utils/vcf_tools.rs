@@ -49,7 +49,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///
 /// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
-    variant_locations: &MutByContig<'_>,
+    variant_locations: &MutByContig,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &Path,
@@ -176,8 +176,8 @@ mod tests {
         let variants = HashMap::from([(
             "chr1".to_string(),
             vec![
-                Mutation::new_snp(&seq, 3, seq[3].complement()).unwrap(),
-                Mutation::new_snp(&seq, 7, seq[7].complement()).unwrap(),
+                Mutation::new_snp(3, seq[3], seq[3].complement()).unwrap(),
+                Mutation::new_snp(7, seq[7], seq[7].complement()).unwrap(),
             ],
         )]);
         let fasta_order = vec!["chr1".to_string()];

@@ -47,12 +47,6 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     );
     let (ref_genome, contig_order) = read_fasta(config.reference.as_ref().unwrap())?;
 
-    // Load the quality score model, which simulates sequencing error rates
-    // by generating quality scores for the produced reads.
-    // Currently, we use the original model from NEAT2.0.
-    let default_quality_score_model_file = "models/neat_quality_score_model.json";
-    let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
-
     // Read mutation model from file or generate a default one
     let mut mut_model;
     if let Some(mutation_model_file) = &config.mutation_model {
@@ -123,6 +117,12 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         let outsets: Vec<&Vec<Nuc>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
         outsets_order.shuffle(rng);
+
+        // Load the quality score model, which simulates sequencing error rates
+        // by generating quality scores for the produced reads.
+        // Currently, we use the original model from NEAT2.0.
+        let default_quality_score_model_file = "models/neat_quality_score_model.json";
+        let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
 
         info!("Writing fastq");
         write_fastq(

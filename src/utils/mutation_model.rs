@@ -1,4 +1,7 @@
-use super::{mutation::MutationType, nucleotides::Nuc};
+use super::{
+    mutation::MutationType,
+    nucleotides::{self, Nuc},
+};
 use anyhow::{anyhow, Result};
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
@@ -112,6 +115,16 @@ impl Default for InsModel {
     }
 }
 
+impl InsModel {
+    /// Get a mutated sequence
+    pub fn get_alt_bases<R: Rng>(&self, ref_base: Nuc, rng: &mut R) -> Vec<Nuc> {
+        let len = self.length.sample(rng);
+        let mut seq = vec![ref_base];
+        seq.extend(nucleotides::random_seq(rng, len));
+        seq
+    }
+}
+
 /// A model for deletion mutations.
 #[derive(Serialize, Deserialize)]
 pub struct DelModel {
@@ -125,5 +138,13 @@ impl Default for DelModel {
         Self {
             length: WeightedIndex::new(vec![0.25, 0.25, 0.25, 0.25]).unwrap(),
         }
+    }
+}
+
+impl DelModel {
+    /// Get length of sequence to remove
+    pub fn get_len<R: Rng>(&self, max_len: usize, rng: &mut R) -> usize {
+        let len = self.length.sample(rng);
+        len.min(max_len)
     }
 }
