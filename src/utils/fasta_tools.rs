@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 use log::info;
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Reads a fasta file and returns a hashmap with the contig names as
 /// keys and the sequences as values.
@@ -74,11 +74,12 @@ pub fn write_fasta(
     fasta_output: &SeqByContig,
     fasta_order: &[String],
     overwrite_output: bool,
-    output_prefix: &str,
+    output_prefix: &Path,
 ) -> Result<()> {
     // writing fasta output to files
-    let mut output_fasta = format!("{}.fasta", output_prefix);
-    let mut outfile = open_file(&mut output_fasta, overwrite_output)?;
+    let output_fasta = output_prefix.with_extension("fasta");
+    info!("Writing {}", output_fasta.display());
+    let mut outfile = open_file(&output_fasta, overwrite_output)?;
 
     for contig in fasta_order {
         let sequence = &fasta_output[contig];
@@ -126,10 +127,10 @@ mod tests {
         let fasta_order = vec![String::from("H1N1_HA")];
 
         let tmp_dir = TempDir::new("crusty_neat")?;
-        let output_file = tmp_dir.path().join("test").to_str().unwrap().to_string();
+        let output_file = tmp_dir.path().join("test");
 
         write_fasta(&fasta_pointer, &fasta_order, true, &output_file)?;
-        let file_name = format!("{output_file}.fasta");
+        let file_name = output_file.with_extension("fasta");
         let attr = fs::metadata(&file_name)?;
         assert!(attr.len() > 0);
         fs::remove_file(file_name)?;

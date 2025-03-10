@@ -6,6 +6,7 @@ use super::quality_scores::QualityScoreModel;
 use anyhow::Result;
 use rand::Rng;
 use std::io::Write;
+use std::path::Path;
 
 /// Writes FASTQ files based on the provided dataset.
 ///
@@ -30,7 +31,7 @@ use std::io::Write;
 /// Currently, only a single R1 file is written, but future versions
 /// will support both R1 and R2 files.
 pub fn write_fastq<R: Rng>(
-    fastq_filename: &str,
+    output_prefix: &Path,
     overwrite_output: bool,
     paired_ended: bool,
     dataset: Vec<&Vec<Nuc>>,
@@ -40,13 +41,13 @@ pub fn write_fastq<R: Rng>(
 ) -> Result<()> {
     // The prefix for read names. Reads are numbered in output order.
     let name_prefix = "neat_generated_";
-    let mut filename1 = format!("{}_r1.fastq", fastq_filename);
-    let mut outfile1 = open_file(&mut filename1, overwrite_output)?;
+    let filename1 = output_prefix.with_extension("r1.fastq");
+    let mut outfile1 = open_file(&filename1, overwrite_output)?;
     // Setting up pairend ended reads. For single ended reads,
     // we have outfile2 = None
     let mut outfile2 = if paired_ended {
-        let mut filename2 = format!("{}_r2.fastq", fastq_filename);
-        Some(open_file(&mut filename2, overwrite_output)?)
+        let filename2 = output_prefix.with_extension("r2.fastq");
+        Some(open_file(&filename2, overwrite_output)?)
     } else {
         None
     };
@@ -100,15 +101,18 @@ fn quality_scores_to_str(array: Vec<u32>) -> String {
 
 #[cfg(test)]
 mod tests {
+    use tempdir::TempDir;
+
     use super::*;
     use crate::create_rng;
     use crate::utils::nucleotides::random_seq;
     use std::fs;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn test_write_fastq_single() -> Result<()> {
-        let fastq_filename = "test_single";
+        let tmp_dir = TempDir::new("crusty_neat")?;
+        let fastq_filename = tmp_dir.path().join("test_single");
         let overwrite_output = true;
         let paired_ended = false;
         let mut rng = create_rng(Some("Hello Cruel World"));
@@ -118,7 +122,7 @@ mod tests {
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();
         write_fastq(
-            fastq_filename,
+            &fastq_filename,
             overwrite_output,
             paired_ended,
             dataset,
@@ -126,8 +130,8 @@ mod tests {
             quality_score_model,
             &mut rng,
         )?;
-        let outfile1 = Path::new("test_single_r1.fastq");
-        let outfile2 = Path::new("test_single_r2.fastq");
+        let outfile1 = tmp_dir.path().join("test_single.r1.fastq");
+        let outfile2 = tmp_dir.path().join("test_single.r2.fastq");
         assert!(outfile1.exists());
         assert!(!outfile2.exists());
         fs::remove_file(outfile1)?;
@@ -136,7 +140,8 @@ mod tests {
 
     #[test]
     fn test_write_fastq_paired() -> Result<()> {
-        let fastq_filename = "test_paired";
+        let tmp_dir = TempDir::new("crusty_neat")?;
+        let fastq_filename = tmp_dir.path().join("test_paired");
         // might as well test the o_o function as well
         let overwrite_output = false;
         let paired_ended = true;
@@ -147,7 +152,7 @@ mod tests {
         let dataset_order = vec![1, 0];
         let quality_score_model = QualityScoreModel::new();
         write_fastq(
-            fastq_filename,
+            &fastq_filename,
             overwrite_output,
             paired_ended,
             dataset,
@@ -155,8 +160,8 @@ mod tests {
             quality_score_model,
             &mut rng,
         )?;
-        let outfile1 = Path::new("test_paired_r1.fastq");
-        let outfile2 = Path::new("test_paired_r2.fastq");
+        let outfile1 = tmp_dir.path().join("test_paired.r1.fastq");
+        let outfile2 = tmp_dir.path().join("test_paired.r2.fastq");
         assert!(outfile1.exists());
         assert!(outfile2.exists());
         fs::remove_file(outfile1)?;

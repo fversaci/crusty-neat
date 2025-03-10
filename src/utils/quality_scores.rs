@@ -34,7 +34,10 @@ use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    path::PathBuf,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QualityScoreModel {
@@ -242,7 +245,7 @@ impl QualityScoreModel {
             indexes
         }
     }
-    pub fn write_out_quality_model(&self, filename: &mut str) -> Result<()> {
+    pub fn write_out_quality_model(&self, filename: &PathBuf) -> Result<()> {
         // Uses the serde_json crate to write out the json form of the
         // model. This will help us create base datasets from old neat
         // data, and give us a way to write out models that are

@@ -14,17 +14,11 @@ pub fn read_lines(filename: &PathBuf) -> io::Result<io::Lines<io::BufReader<File
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn open_file(mut filename: &mut str, overwrite_file: bool) -> Result<File, Error> {
+pub fn open_file(filename: &PathBuf, overwrite_file: bool) -> Result<File, Error> {
     if overwrite_file && Path::new(filename).exists() {
-        File::options()
-            .truncate(true)
-            .write(true)
-            .open(&mut filename)
+        File::options().truncate(true).write(true).open(filename)
     } else {
-        File::options()
-            .create_new(true)
-            .append(true)
-            .open(&mut filename)
+        File::options().create_new(true).append(true).open(filename)
     }
 }
 

@@ -15,35 +15,22 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::HashSet;
 
-/// The main function that runs the NEAT simulation.
-/// This function will mutate the reference genome, and then produce
-/// the output files
-///
-/// # Arguments
-///
-/// * `config` - The configuration for the run
-/// * `rng` - The random number generator to use
-///
-/// # Returns
-///
-/// * `Result<()>` - A result that will be Ok(()) if the run was
-///   successful
+/// Mutate the reference genome and generate the output files
 pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     // check that the configuration is valid and create the output directory
     config.check()?;
     check_create_dir(config.output_dir.as_ref().unwrap())?;
 
     // Create the prefix of the files to write
-    let output_prefix = format!(
-        "{}/{}",
-        config.output_dir.unwrap().display(),
-        config.output_prefix.unwrap()
-    );
+    let output_prefix = config
+        .output_dir
+        .unwrap()
+        .join(config.output_prefix.unwrap());
 
     // Read the reference file into memory
     info!(
         "Mapping reference fasta file: {}",
-        &config.reference.as_ref().unwrap().display()
+        config.reference.as_ref().unwrap().display()
     );
     let (ref_genome, contig_order) = read_fasta(config.reference.as_ref().unwrap())?;
 
@@ -65,6 +52,10 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     }
 
     // serialize the mutation model to a yaml file
+    info!(
+        "Saving final mutation model to file {}",
+        &output_prefix.display()
+    );
     mut_model.write_to_file(&output_prefix)?;
 
     // Mutate the reference and record the variant locations.
@@ -73,7 +64,6 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     let mut_genome = apply_mutations(&ref_genome, &mutations)?;
 
     if config.produce_fasta == Some(true) {
-        info!("Outputting fasta file");
         write_fasta(
             &mut_genome,
             &contig_order,
@@ -83,7 +73,6 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     }
 
     if config.produce_vcf == Some(true) {
-        info!("Writing vcf file");
         write_vcf(
             &mutations,
             &contig_order,

@@ -12,8 +12,7 @@ use std::hash::{DefaultHasher, Hasher};
 use utils::config::{self, RunConfiguration};
 use utils::runner::run_neat;
 
-/// Create a random number generator from a seed string. If no seed is provided
-/// we generate a random seed.
+/// Create a random number generator from an optional seed string.
 pub fn create_rng(seed: Option<&str>) -> StdRng {
     let seed = seed
         .map(|s| {
@@ -26,9 +25,9 @@ pub fn create_rng(seed: Option<&str>) -> StdRng {
     StdRng::seed_from_u64(seed)
 }
 
-/// Main function for the program. This function parses the command
-/// line arguments and then runs the main script for generating reads.
+/// Parse the command line arguments and merge them with the config file.
 fn main() -> Result<()> {
+    // parse cli arguments
     let args = config::Args::parse();
     // read config file or start with default values
     let mut config;
@@ -45,6 +44,7 @@ fn main() -> Result<()> {
         config.override_with(&arg_config)?;
     }
 
+    // start loggers
     let _loggers;
     let term_log = TermLogger::new(
         args.log_level,
@@ -70,6 +70,6 @@ fn main() -> Result<()> {
         info!("Seed string to regenerate these exact results: {:?}", sd);
     }
 
-    // Run the main script
+    // Run the main function
     run_neat(config, &mut rng)
 }

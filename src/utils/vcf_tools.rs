@@ -2,6 +2,7 @@ use super::file_tools::open_file;
 use super::mutation::Mutation;
 use super::types::MutByContig;
 use anyhow::{anyhow, Result};
+use log::info;
 use rand::seq::index::sample;
 use rand::Rng;
 use std::io::Write;
@@ -54,12 +55,13 @@ pub fn write_vcf<R: Rng>(
     ploidy: usize,
     reference_path: &Path,
     overwrite_output: bool,
-    output_prefix: &str,
+    output_prefix: &Path,
     rng: &mut R,
 ) -> Result<()> {
     // set the filename of the output vcf
-    let mut filename = format!("{}.vcf", output_prefix);
-    let mut outfile = open_file(&mut filename, overwrite_output)?;
+    let filename = output_prefix.with_extension("vcf");
+    info!("Writing {}", filename.display());
+    let mut outfile = open_file(&filename, overwrite_output)?;
     // add the vcf header
     writeln!(&mut outfile, "##fileformat=VCFv4.1")?;
     writeln!(&mut outfile, "##reference={}", reference_path.display())?;
@@ -184,7 +186,7 @@ mod tests {
         let ploidy = 2;
         let reference_path = PathBuf::from("/fake/path/to/H1N1.fa");
         let tmp_dir = TempDir::new("crusty_neat")?;
-        let output_file_prefix = tmp_dir.path().join("test").to_str().unwrap().to_string();
+        let output_file_prefix = tmp_dir.path().join("test");
         let overwrite_output = false;
         write_vcf(
             &variants,

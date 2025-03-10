@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use log::info;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A model for genome mutations
 #[derive(Serialize, Deserialize)]
@@ -97,9 +97,9 @@ impl<'a> RefMutationModel<'a> {
         Ok(())
     }
     /// Serialize mutation model to a yaml file.
-    pub fn write_to_file(&self, output_prefix: &str) -> Result<()> {
-        let filename = format!("{}.mut_model.yml", output_prefix);
-        info!("Writing full mutation model to {}", filename);
+    pub fn write_to_file(&self, output_prefix: &Path) -> Result<()> {
+        let filename = output_prefix.with_extension("mut_model.yml");
+        info!("Writing full mutation model to {}", filename.display());
         let file = std::fs::File::create(&filename)?;
         serde_yaml::to_writer(&file, self)?;
         Ok(())
