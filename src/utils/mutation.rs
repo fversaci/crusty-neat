@@ -56,6 +56,19 @@ impl Mutation {
         }
     }
 
+    /// Get the range of the reference sequence that can be skip after
+    /// applying the mutation
+    pub fn get_skip_range(&self) -> (usize, usize) {
+        match self {
+            // skip changed Nuc
+            Mutation::Snp { pos, .. } => (*pos, pos + 1),
+            // Insertion, skip nothing
+            Mutation::Ins { pos, .. } => (*pos, *pos),
+            // Skip deleted part
+            Mutation::Del { pos, ref_seq } => (*pos, pos + ref_seq.len()),
+        }
+    }
+
     /// Create a new SNP mutation
     pub fn new_snp(pos: usize, ref_base: Nuc, alt_base: Nuc) -> Result<Self> {
         if ref_base == alt_base {

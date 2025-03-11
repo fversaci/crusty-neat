@@ -103,16 +103,30 @@ fn mutate_region<R: Rng>(
 }
 
 /// Applies the mutations to the reference genome and returns the new genome.
+///
+/// We assume mutations are ordered based on the start of their interference range
 pub fn apply_mutations(genome: &SeqByContig, mutations: &MutByContig) -> Result<SeqByContig> {
-    let mut new_genome = genome.clone();
+    let mut new_genome = SeqByContig::new();
     for (contig, mutations) in mutations {
-        let sequence = new_genome.get_mut(contig).unwrap();
+        let mut prev = 0;
+        let sequence = new_genome.entry(contig.clone()).or_default();
+        let ref_sequence = genome
+            .get(contig)
+            .ok_or_else(|| anyhow!("contig {} not found in reference genome", contig))?;
         for mutation in mutations {
+            let (start, end) = mutation.get_skip_range();
+            sequence.extend(&ref_sequence[prev..start]);
+            prev = end;
             match mutation {
-                Mutation::Snp { pos, alt_base, .. } => {
-                    sequence[*pos] = *alt_base;
+                Mutation::Snp { alt_base, .. } => {
+                    sequence.push(*alt_base);
                 }
-                _ => return Err(anyhow!("Non-SNP mutations not supported yet")),
+                Mutation::Ins { alt_bases, .. } => {
+                    sequence.extend(alt_bases);
+                }
+                Mutation::Del { .. } => {
+                    // do nothing
+                }
             }
         }
     }

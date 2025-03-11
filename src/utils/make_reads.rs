@@ -14,8 +14,6 @@ use rand::Rng;
 use rand_distr::Distribution;
 use std::collections::HashSet;
 
-
-
 /// Covers a sequence by selecting random reads. Starts at the
 /// beginning, advances by one read length, then jumps forward by a
 /// random amount (0 to half the read length) to select the next
