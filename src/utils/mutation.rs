@@ -33,15 +33,6 @@ pub enum MutationType {
 }
 
 impl Mutation {
-    /// Get initial position of the mutation
-    pub fn get_pos(&self) -> usize {
-        match self {
-            Mutation::Snp { pos, .. } => *pos,
-            Mutation::Ins { pos, .. } => *pos,
-            Mutation::Del { pos, .. } => *pos,
-        }
-    }
-
     /// Get the range of the reference sequence that should not be
     /// affected by other mutations
     pub fn get_interference_range(&self) -> (usize, usize) {
@@ -130,7 +121,7 @@ mod tests {
     fn test_new_snp() {
         let ref_seq = [Nuc::A, Nuc::C, Nuc::G, Nuc::T];
         let mutation = Mutation::new_snp(2, ref_seq[2], Nuc::A).unwrap();
-        assert_eq!(mutation.get_pos(), 2);
+        assert_eq!(mutation.get_interference_range().0, 1);
         let wrong_mutation = Mutation::new_snp(2, ref_seq[2], Nuc::G);
         assert!(wrong_mutation.is_err());
     }
@@ -139,7 +130,7 @@ mod tests {
     fn test_new_ins() {
         let ref_seq = [Nuc::A, Nuc::C, Nuc::G, Nuc::T];
         let mutation = Mutation::new_ins(2, ref_seq[2], vec![Nuc::A, Nuc::C]).unwrap();
-        assert_eq!(mutation.get_pos(), 2);
+        assert_eq!(mutation.get_interference_range().0, 2);
         let wrong_mutation = Mutation::new_ins(2, ref_seq[2], Vec::<Nuc>::new());
         assert!(wrong_mutation.is_err());
     }
@@ -148,7 +139,7 @@ mod tests {
     fn test_new_del() {
         let ref_seq = [Nuc::A, Nuc::C, Nuc::G, Nuc::T];
         let mutation = Mutation::new_del(1, ref_seq[1..3].to_vec()).unwrap();
-        assert_eq!(mutation.get_pos(), 1);
+        assert_eq!(mutation.get_interference_range().0, 1);
         let wrong_mutation = Mutation::new_del(1, ref_seq[1..1].to_vec());
         assert!(wrong_mutation.is_err());
     }
