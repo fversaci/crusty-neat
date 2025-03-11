@@ -7,8 +7,8 @@
 // fasta file. These will either be read-length fragments or fragment
 // model length fragments.
 
-use super::distributions::IntDistribution;
-use super::nucleotides::Nuc;
+use crate::utils::distributions::IntDistribution;
+use crate::utils::nucleotides::Nuc;
 use anyhow::{anyhow, Result};
 use rand::Rng;
 use rand_distr::Distribution;

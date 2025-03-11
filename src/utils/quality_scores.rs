@@ -28,7 +28,7 @@
 //   for longer read lengths.
 //   * In Python, at least, this was slow, although in retrospect it
 //   didn't eat up much memory.
-use super::file_tools::open_file;
+use crate::utils::file_tools::open_file;
 use anyhow::{anyhow, Result};
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;

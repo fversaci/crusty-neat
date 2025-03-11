@@ -1,6 +1,6 @@
-use super::file_tools::open_file;
-use super::mutation::Mutation;
-use super::types::MutByContig;
+use crate::utils::file_tools::open_file;
+use crate::utils::mutation::Mutation;
+use crate::utils::types::MutByContig;
 use anyhow::{anyhow, Result};
 use log::info;
 use rand::seq::index::sample;

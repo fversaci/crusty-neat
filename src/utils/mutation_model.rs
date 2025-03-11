@@ -1,4 +1,4 @@
-use super::{
+use crate::utils::{
     mutation::MutationType,
     nucleotides::{self, Nuc},
 };

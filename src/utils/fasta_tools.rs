@@ -1,9 +1,9 @@
 // This library contains tools needed to process fasta files as input and output.
 
-use super::file_tools::open_file;
-use super::file_tools::read_lines;
-use super::nucleotides::{base_to_nuc, nuc_to_base, Nuc};
-use super::types::SeqByContig;
+use crate::utils::file_tools::open_file;
+use crate::utils::file_tools::read_lines;
+use crate::utils::nucleotides::{base_to_nuc, nuc_to_base, Nuc};
+use crate::utils::types::SeqByContig;
 use anyhow::{anyhow, Result};
 use log::info;
 use std::collections::HashMap;

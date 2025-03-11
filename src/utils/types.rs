@@ -1,4 +1,4 @@
-use super::{mutation::Mutation, nucleotides::Nuc};
+use crate::utils::{mutation::Mutation, nucleotides::Nuc};
 use std::collections::HashMap;
 
 /// Maps contig names to their nucleotide sequences

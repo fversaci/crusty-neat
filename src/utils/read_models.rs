@@ -1,4 +1,4 @@
-use super::quality_scores::QualityScoreModel;
+use crate::utils::quality_scores::QualityScoreModel;
 use anyhow::Result;
 use serde_json;
 use std::fs;

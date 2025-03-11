@@ -1,4 +1,4 @@
-use super::{
+use crate::utils::{
     mutation::{Mutation, MutationType},
     mutation_model::{
         DelModel, InsModel, MutProbabilities, MutRateByContig, MutationModel, Region, SnpModel,

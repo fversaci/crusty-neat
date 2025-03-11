@@ -1,4 +1,4 @@
-use super::nucleotides::Nuc;
+use crate::utils::nucleotides::Nuc;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString};

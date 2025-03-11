@@ -1,7 +1,5 @@
-use crate::utils::mutation;
-
-use super::{
-    mutation::{Mutation, MutationType},
+use crate::utils::{
+    mutation::{self, Mutation, MutationType},
     mutation_model::Region,
     nucleotides::Nuc,
     ref_mutation_model::RefMutationModel,
