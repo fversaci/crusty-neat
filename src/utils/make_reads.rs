@@ -9,7 +9,7 @@
 
 use crate::utils::distributions::IntDistribution;
 use crate::utils::nucleotides::Nuc;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use rand::Rng;
 use rand_distr::Distribution;
 use std::collections::HashSet;

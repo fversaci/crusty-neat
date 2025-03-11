@@ -1,10 +1,10 @@
 use crate::utils::file_tools::open_file;
 use crate::utils::mutation::Mutation;
 use crate::utils::types::MutByContig;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::info;
-use rand::seq::index::sample;
 use rand::Rng;
+use rand::seq::index::sample;
 use std::io::Write;
 use std::path::Path;
 
@@ -74,8 +74,14 @@ pub fn write_vcf<R: Rng>(
         &mut outfile,
         "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">"
     )?;
-    writeln!(&mut outfile, "##INFO=<ID=VMX,Number=1,Type=String, Description=\"SNP is Missense in these Read Frames\">")?;
-    writeln!(&mut outfile, "##INFO=<ID=VNX,Number=1,Type=String, Description=\"SNP is Nonsense in these Read Frames\">")?;
+    writeln!(
+        &mut outfile,
+        "##INFO=<ID=VMX,Number=1,Type=String, Description=\"SNP is Missense in these Read Frames\">"
+    )?;
+    writeln!(
+        &mut outfile,
+        "##INFO=<ID=VNX,Number=1,Type=String, Description=\"SNP is Nonsense in these Read Frames\">"
+    )?;
     writeln!(
         &mut outfile,
         "##INFO=<ID=VFX,Number=1,Type=String,Description=\"Indel Causes Frameshift\">"

@@ -11,8 +11,8 @@ use crate::utils::ref_mutation_model::RefMutationModel;
 use crate::utils::vcf_tools::write_vcf;
 use anyhow::Result;
 use log::info;
-use rand::seq::SliceRandom;
 use rand::Rng;
+use rand::seq::SliceRandom;
 use std::collections::HashSet;
 
 /// Mutate the reference genome and generate the output files

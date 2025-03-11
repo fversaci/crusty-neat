@@ -29,10 +29,10 @@
 //   * In Python, at least, this was slow, although in retrospect it
 //   didn't eat up much memory.
 use crate::utils::file_tools::open_file;
-use anyhow::{anyhow, Result};
-use rand::distr::weighted::WeightedIndex;
-use rand::distr::Distribution;
+use anyhow::{Result, anyhow};
 use rand::Rng;
+use rand::distr::Distribution;
+use rand::distr::weighted::WeightedIndex;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -304,7 +304,7 @@ mod tests {
           \tscores: [0, 10, 20]\n\
           \tbinned? true\n\
           \tseed weights: [1, 3, 1]\n\
-          \tscore weight array: [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[1, 3, 2], [1, 2, 3], [1, 1, 3]], [[1, 1, 3], [1, 1, 3], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[3, 1, 1], [2, 3, 1], [3, 5, 1]], [[3, 1, 1], [3, 2, 1], [3, 1, 1]], [[5, 1, 1], [5, 3, 1], [3, 5, 1]]]"
+          \tscore weight array: [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[1, 3, 2], [1, 2, 3], [1, 1, 3]], [[1, 1, 3], [1, 1, 3], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[1, 1, 5], [1, 1, 5], [1, 1, 5]], [[3, 1, 1], [2, 3, 1], [3, 5, 1]], [[3, 1, 1], [3, 2, 1], [3, 1, 1]], [[5, 1, 1], [5, 3, 1], [3, 5, 1]]]",
         );
         assert_eq!(format!("{}", score_model.display_it_all()), message);
 

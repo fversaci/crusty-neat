@@ -1,5 +1,5 @@
 use crate::utils::nucleotides::Nuc;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString};
 

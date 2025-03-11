@@ -1,7 +1,7 @@
 [package]
 name = "crusty-neat"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 rand_distr = "0.5.1"

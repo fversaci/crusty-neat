@@ -5,7 +5,7 @@ use crate::utils::{
     ref_mutation_model::RefMutationModel,
     types::{MutByContig, SeqByContig},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::debug;
 use rand::Rng;
 use rand_distr::{Binomial, Distribution};

@@ -2,9 +2,9 @@
 
 use crate::utils::file_tools::open_file;
 use crate::utils::file_tools::read_lines;
-use crate::utils::nucleotides::{base_to_nuc, nuc_to_base, Nuc};
+use crate::utils::nucleotides::{Nuc, base_to_nuc, nuc_to_base};
 use crate::utils::types::SeqByContig;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::info;
 use std::collections::HashMap;
 use std::io::Write;

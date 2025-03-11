@@ -6,7 +6,7 @@ use crate::utils::{
     nucleotides::Nuc,
     types::SeqByContig,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::info;
 use rand::Rng;
 use serde::{Deserialize, Serialize};

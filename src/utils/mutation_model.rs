@@ -2,10 +2,10 @@ use crate::utils::{
     mutation::MutationType,
     nucleotides::{self, Nuc},
 };
-use anyhow::{anyhow, Result};
-use rand::distr::weighted::WeightedIndex;
-use rand::distr::Distribution;
+use anyhow::{Result, anyhow};
 use rand::Rng;
+use rand::distr::Distribution;
+use rand::distr::weighted::WeightedIndex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

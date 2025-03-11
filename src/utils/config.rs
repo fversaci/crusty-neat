@@ -1,5 +1,5 @@
 use crate::LevelFilter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
