@@ -4,8 +4,7 @@ use anyhow::Result;
 use log::warn;
 use std::fs::File;
 use std::io::{BufRead, Error};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 pub fn read_lines(filename: &PathBuf) -> io::Result<io::Lines<io::BufReader<File>>> {

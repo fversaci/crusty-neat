@@ -33,9 +33,7 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///
 /// # Arguments
 ///
-/// * `variant_locations` - A map where keys are contig names, and
-///   values are lists of variants in that contig. Each variant is
-///   represented as a tuple of `(position, alt base, ref base)`.
+/// * `mutations` - The generated mutations, indexed by contig
 /// * `fasta_order` - A vector of contig names in the order they
 ///   appear in the reference FASTA.
 /// * `ploidy` - The number of copies of each chromosome present in
@@ -45,12 +43,8 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 /// * `output_file_prefix` - The directory path and filename prefix
 ///   for output files.
 /// * `rng` - A random number generator for this run.
-///
-/// # Returns
-///
-/// Returns `()` if successful. Throws an error if there is a problem.
 pub fn write_vcf<R: Rng>(
-    variant_locations: &MutByContig,
+    mutations: &MutByContig,
     fasta_order: &Vec<String>,
     ploidy: usize,
     reference_path: &Path,
@@ -116,7 +110,7 @@ pub fn write_vcf<R: Rng>(
     )?;
     // insert mutations
     for contig in fasta_order {
-        for mutation in &variant_locations[contig] {
+        for mutation in &mutations[contig] {
             match mutation {
                 Mutation::Snp {
                     pos,

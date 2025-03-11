@@ -14,11 +14,13 @@ use rand::Rng;
 use rand_distr::Distribution;
 use std::collections::HashSet;
 
-/// This function selects the positions of the reads. It starts at the
-/// beginning and goes out one read length, then picks a random jump
-/// between 0 and half the read length to move and picks those
-/// coordinates for a second read. Once the tail of the read is past
-/// the end, we start over again at 0.
+
+
+/// Covers a sequence by selecting random reads. Starts at the
+/// beginning, advances by one read length, then jumps forward by a
+/// random amount (0 to half the read length) to select the next
+/// position. Repeats until the read tail exceeds the sequence length,
+/// then restarts by wrapping around.
 ///
 /// # Arguments
 ///
@@ -32,7 +34,7 @@ use std::collections::HashSet;
 /// # Returns
 ///
 /// A vector of tuples (usize, usize), denoting the start and end
-/// positions of the fragment of DNA that was sequenced.
+/// positions of the fragments of DNA that was sequenced.
 fn cover_dataset<R: Rng>(
     span_length: usize,
     read_length: usize,

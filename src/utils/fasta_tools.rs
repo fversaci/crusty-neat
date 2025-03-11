@@ -1,7 +1,6 @@
 // This library contains tools needed to process fasta files as input and output.
 
-use crate::utils::file_tools::open_file;
-use crate::utils::file_tools::read_lines;
+use crate::utils::file_tools::{open_file, read_lines};
 use crate::utils::nucleotides::{Nuc, base_to_nuc, nuc_to_base};
 use crate::utils::types::SeqByContig;
 use anyhow::{Result, anyhow};
@@ -12,18 +11,6 @@ use std::path::{Path, PathBuf};
 
 /// Reads a fasta file and returns a hashmap with the contig names as
 /// keys and the sequences as values.
-///
-/// # Arguments
-///
-///   - fasta_path: the path to the fasta file
-///
-/// # Returns
-///
-///   - A tuple with the hashmap of sequences and the order of the
-///     sequences in the file
-///
-/// Errors if the file cannot be read or if the file is not in fasta
-/// format.
 pub fn read_fasta(fasta_path: &PathBuf) -> Result<(SeqByContig, Vec<String>)> {
     info!("Reading fasta: {}", fasta_path.display());
 
@@ -56,20 +43,6 @@ pub fn read_fasta(fasta_path: &PathBuf) -> Result<(SeqByContig, Vec<String>)> {
 }
 
 /// Writes a hashmap of sequences to a fasta file.
-///
-/// # Arguments
-///
-///   - `fasta_output`: a hashmap with the contig names as keys and the
-///     mutated sequences as values
-///   - `fasta_order`: a vector with the order of the sequences in the
-///     file
-///   - `output_file`: the prefix for the output file name
-///
-/// # Returns
-///
-///   - Nothing
-///
-/// Errors if there is a problem writing the file.
 pub fn write_fasta(
     fasta_output: &SeqByContig,
     fasta_order: &[String],

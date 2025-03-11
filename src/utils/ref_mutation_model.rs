@@ -1,11 +1,9 @@
-use crate::utils::{
-    mutation::{Mutation, MutationType},
-    mutation_model::{
-        DelModel, InsModel, MutProbabilities, MutRateByContig, MutationModel, Region, SnpModel,
-    },
-    nucleotides::Nuc,
-    types::SeqByContig,
+use crate::utils::mutation::{Mutation, MutationType};
+use crate::utils::mutation_model::{
+    DelModel, InsModel, MutProbabilities, MutRateByContig, MutationModel, Region, SnpModel,
 };
+use crate::utils::nucleotides::Nuc;
+use crate::utils::types::SeqByContig;
 use anyhow::{Result, anyhow};
 use log::info;
 use rand::Rng;
