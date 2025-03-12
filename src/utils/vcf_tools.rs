@@ -1,5 +1,4 @@
 use crate::utils::file_tools::open_file;
-use crate::utils::mutation::Mutation;
 use crate::utils::types::MutByContig;
 use anyhow::{Result, anyhow};
 use chrono::Local;
@@ -62,7 +61,7 @@ pub fn write_vcf<R: Rng>(
     let vcf_headers = [
         // File format and reference
         "##fileformat=VCFv4.5",
-        &format!("##fileDate={}", Local::now().format("%Y%m%d").to_string()),
+        &format!("##fileDate={}", Local::now().format("%Y%m%d")),
         "##source=crusty-neat",
         &format!("##reference={}", reference_path.display()),
         // INFO fields
@@ -82,44 +81,30 @@ pub fn write_vcf<R: Rng>(
     // insert mutations
     for contig in fasta_order {
         for mutation in &mutations[contig] {
-            match mutation {
-                Mutation::Snp {
-                    pos,
-                    ref_base,
-                    alt_base,
-                } => {
-                    // If we're going to mutate more than one ploid (i.e. homozygous
-                    // for diploid organisms), we must add it to the list.
-                    let mut genotype: Vec<usize> = vec![0; ploidy];
-                    // By default we'll assume heterozygous (only on one ploid).
-                    let mut num_ploids: usize = 1;
-                    let multiple_mut = rng.random_bool(prob_mut_multiple);
-                    if multiple_mut && ploidy > 1 {
-                        num_ploids = rng.random_range(1..=ploidy);
-                    }
-                    // for each ploid that has the mutation, change one random
-                    // genotype to 1, indicating the mutation is on that copy.
-                    for i in sample(rng, ploidy, num_ploids) {
-                        genotype[i] = 1;
-                    }
-                    // Format the output line. Any fields without data will be
-                    // a simple period. Quality is set to 37 for all these
-                    // variants.
-                    let line = format!(
-                        "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
-                        contig,
-                        pos + 1, // 1-based
-                        ref_base.to_base(),
-                        alt_base.to_base(),
-                        genotype_to_string(genotype)?,
-                    );
-
-                    writeln!(&mut outfile, "{}", line)?;
-                }
-                _ => {
-                    return Err(anyhow!("Only SNPs are currently supported."));
-                }
+            // Mutate more than copy of the chromosome?
+            let mut genotype: Vec<usize> = vec![0; ploidy];
+            let mut num_ploids: usize = 1;
+            let multiple_mut = rng.random_bool(prob_mut_multiple);
+            if multiple_mut && ploidy > 1 {
+                num_ploids = rng.random_range(2..=ploidy);
             }
+            // mark mutated ploids
+            for i in sample(rng, ploidy, num_ploids) {
+                genotype[i] = 1;
+            }
+            // Format the output line. Any fields without data
+            // will be a simple period. Quality is set to 37
+            // for all these variants.
+            let line = format!(
+                "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
+                contig,
+                mutation.clone().get_1_pos(), // 1-based
+                mutation.clone().get_ref(),
+                mutation.clone().get_alt(),
+                genotype_to_string(genotype)?,
+            );
+
+            writeln!(&mut outfile, "{}", line)?;
         }
     }
     Ok(())
@@ -127,13 +112,13 @@ pub fn write_vcf<R: Rng>(
 
 #[cfg(test)]
 mod tests {
-    use tempdir::TempDir;
-
     use super::*;
     use crate::create_rng;
+    use crate::utils::mutation::Mutation;
     use crate::utils::nucleotides::random_seq;
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use tempdir::TempDir;
 
     #[test]
     fn test_genotype_to_string() -> Result<()> {

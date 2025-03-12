@@ -118,8 +118,8 @@ impl<'a> RefMutationModel<'a> {
     /// Create new deletion mutation at given position
     pub fn create_del<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
         let del_model = &self.mm.del_model;
-        let max_len = seq.len() - pos;
-        let len = del_model.get_len(max_len, rng);
+        let max_len = seq.len() - pos - 1;
+        let len = 1 + del_model.get_len(max_len, rng); // delete after current base
         let ref_seq = seq[pos..pos + len].to_vec();
         // construct and return the mutation
         Mutation::new_del(pos, ref_seq)

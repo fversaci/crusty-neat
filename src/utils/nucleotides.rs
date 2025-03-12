@@ -16,7 +16,13 @@ pub enum Nuc {
 impl Nuc {
     /// Convert a nucleotide to a base character.
     pub fn to_base(self) -> char {
-        nuc_to_base(self)
+        match self {
+            Nuc::A => 'A',
+            Nuc::C => 'C',
+            Nuc::G => 'G',
+            Nuc::T => 'T',
+            Nuc::N => 'N',
+        }
     }
 
     /// Complement function for DNA nucleotides.
@@ -37,16 +43,6 @@ pub fn base_to_nuc(base: char) -> Result<Nuc> {
     }
 }
 
-/// Convert a nucleotide to a base character.
-pub fn nuc_to_base(nuc: Nuc) -> char {
-    match nuc {
-        Nuc::A => 'A',
-        Nuc::C => 'C',
-        Nuc::G => 'G',
-        Nuc::T => 'T',
-        Nuc::N => 'N',
-    }
-}
 /// Complement function for DNA nucleotides.
 pub fn complement(nuc: Nuc) -> Nuc {
     match nuc {
@@ -79,7 +75,7 @@ pub fn random_seq<R: Rng>(rng: &mut R, len: usize) -> Vec<Nuc> {
 }
 
 pub fn seq_to_string(seq: &[Nuc]) -> String {
-    seq.iter().map(|&n| nuc_to_base(n)).collect()
+    seq.iter().map(|&n| n.to_base()).collect()
 }
 
 pub fn string_to_seq(s: &str) -> Result<Vec<Nuc>> {
@@ -108,11 +104,11 @@ mod tests {
 
     #[test]
     fn test_nuc_to_base() {
-        assert_eq!(nuc_to_base(Nuc::A), 'A');
-        assert_eq!(nuc_to_base(Nuc::C), 'C');
-        assert_eq!(nuc_to_base(Nuc::G), 'G');
-        assert_eq!(nuc_to_base(Nuc::T), 'T');
-        assert_eq!(nuc_to_base(Nuc::N), 'N');
+        assert_eq!(Nuc::A.to_base(), 'A');
+        assert_eq!(Nuc::C.to_base(), 'C');
+        assert_eq!(Nuc::G.to_base(), 'G');
+        assert_eq!(Nuc::T.to_base(), 'T');
+        assert_eq!(Nuc::N.to_base(), 'N');
     }
 
     #[test]

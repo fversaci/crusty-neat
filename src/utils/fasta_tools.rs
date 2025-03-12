@@ -1,7 +1,7 @@
 // This library contains tools needed to process fasta files as input and output.
 
 use crate::utils::file_tools::{open_file, read_lines};
-use crate::utils::nucleotides::{Nuc, base_to_nuc, nuc_to_base};
+use crate::utils::nucleotides::{Nuc, seq_to_string, string_to_seq};
 use crate::utils::types::SeqByContig;
 use anyhow::{Result, anyhow};
 use log::info;
@@ -33,7 +33,7 @@ pub fn read_fasta(fasta_path: &PathBuf) -> Result<(SeqByContig, Vec<String>)> {
             fasta_order.push(current_key.clone());
             temp_seq.clear();
         } else {
-            temp_seq.extend(l.chars().map(base_to_nuc).collect::<Result<Vec<_>, _>>()?);
+            temp_seq.extend(string_to_seq(&l)?);
         }
     }
 
@@ -60,7 +60,7 @@ pub fn write_fasta(
         writeln!(outfile, ">{}", contig)?;
         // write sequences[ploid] to this_fasta
         for chunk in sequence.chunks(70) {
-            let line: String = chunk.iter().map(|&b| nuc_to_base(b)).collect();
+            let line: String = seq_to_string(chunk);
             writeln!(outfile, "{}", line)?;
         }
     }
