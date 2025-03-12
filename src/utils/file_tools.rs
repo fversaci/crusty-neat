@@ -14,7 +14,7 @@ pub fn read_lines(filename: &PathBuf) -> io::Result<io::Lines<io::BufReader<File
 }
 
 pub fn open_file(filename: &PathBuf, overwrite_file: bool) -> Result<File, Error> {
-    if overwrite_file && Path::new(filename).exists() {
+    if overwrite_file && filename.exists() {
         File::options().truncate(true).write(true).open(filename)
     } else {
         File::options().create_new(true).append(true).open(filename)
