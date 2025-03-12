@@ -62,3 +62,4 @@ mm:
       weight_distribution:
         low: 0.0
         scale: 1.0
+  prob_mut_multiple: 0.1

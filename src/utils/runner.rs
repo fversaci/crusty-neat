@@ -76,6 +76,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
             &mutations,
             &contig_order,
             config.ploidy.unwrap(),
+            mut_model.mm.prob_mut_multiple,
             &config.reference.unwrap(),
             config.overwrite_output.unwrap(),
             &output_prefix,

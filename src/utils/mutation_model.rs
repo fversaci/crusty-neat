@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Mutations independent of the reference genome.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct MutationModel {
     /// Probabilities of different mutation types.
     pub mut_probabilities: MutProbabilities,
@@ -20,6 +20,9 @@ pub struct MutationModel {
     pub ins_model: InsModel,
     /// Deletion mutation probabilities.
     pub del_model: DelModel,
+    /// Probability that a mutation affect more homologous copies of
+    /// the chromosome
+    pub prob_mut_multiple: f64,
 }
 
 impl MutationModel {
@@ -46,8 +49,8 @@ pub struct MutProbabilities {
     p: HashMap<MutationType, f64>,
 }
 
-impl MutProbabilities {
-    pub fn default() -> Self {
+impl Default for MutProbabilities {
+    fn default() -> Self {
         let mut mp = MutProbabilities { p: HashMap::new() };
         mp.p.insert(MutationType::Snp, 0.5);
         mp.p.insert(MutationType::Ins, 0.25);

@@ -1,6 +1,6 @@
 use crate::utils::mutation::{Mutation, MutationType};
 use crate::utils::mutation_model::{
-    DelModel, InsModel, MutProbabilities, MutRateByContig, MutationModel, Region, SnpModel,
+    MutRateByContig, MutationModel, Region,
 };
 use crate::utils::nucleotides::Nuc;
 use crate::utils::types::SeqByContig;
@@ -45,15 +45,7 @@ impl<'a> RefMutationModel<'a> {
     }
     /// Create a mutation model with the given mutation rate for all contigs.
     pub fn new_all_contigs(genome: &'a SeqByContig, mutation_rate: f64) -> Result<Self> {
-        let snp_model = SnpModel::default();
-        let ins_model = InsModel::default();
-        let del_model = DelModel::default();
-        let mm = MutationModel {
-            mut_probabilities: MutProbabilities::default(),
-            snp_model,
-            ins_model,
-            del_model,
-        };
+        let mm = MutationModel::default();
         let mut rmm = RefMutationModel {
             ref_genome: Some(genome),
             mut_rates: None,
