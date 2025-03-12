@@ -113,7 +113,7 @@ impl Default for InsModel {
     /// Default insertion model
     fn default() -> Self {
         Self {
-            length: WeightedIndex::new(vec![0.25, 0.25, 0.25, 0.25]).unwrap(),
+            length: WeightedIndex::new(vec![0.0, 0.25, 0.25, 0.25, 0.25]).unwrap(),
         }
     }
 }
@@ -139,7 +139,7 @@ impl Default for DelModel {
     /// Default deletion model
     fn default() -> Self {
         Self {
-            length: WeightedIndex::new(vec![0.25, 0.25, 0.25, 0.25]).unwrap(),
+            length: WeightedIndex::new(vec![0.0, 0.25, 0.25, 0.25, 0.25]).unwrap(),
         }
     }
 }
