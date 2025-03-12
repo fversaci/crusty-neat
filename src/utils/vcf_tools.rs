@@ -5,7 +5,7 @@ use anyhow::{Result, anyhow};
 use log::info;
 use rand::Rng;
 use rand::seq::index::sample;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 
 /// Converts a vector of 0s and 1s representing genotype to a standard
@@ -56,8 +56,7 @@ pub fn write_vcf<R: Rng>(
     let filename = output_prefix.with_extension("vcf");
     info!("Writing {}", filename.display());
 
-    let file = open_file(&filename, overwrite_output)?;
-    let mut outfile = BufWriter::new(file); // Buffered writer for efficiency
+    let mut outfile = open_file(&filename, overwrite_output)?;
 
     let vcf_headers = [
         // File format and reference
@@ -118,7 +117,7 @@ pub fn write_vcf<R: Rng>(
                     let line = format!(
                         "{}\t{}\t.\t{}\t{}\t37\tPASS\t.\tGT\t{}",
                         contig,
-                        pos + 1,  // check: seq starts at 1?
+                        pos + 1, // check: seq starts at 1?
                         ref_base.to_base(),
                         alt_base.to_base(),
                         genotype_to_string(genotype)?,

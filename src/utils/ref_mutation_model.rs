@@ -1,7 +1,5 @@
 use crate::utils::mutation::{Mutation, MutationType};
-use crate::utils::mutation_model::{
-    MutRateByContig, MutationModel, Region,
-};
+use crate::utils::mutation_model::{MutRateByContig, MutationModel, Region};
 use crate::utils::nucleotides::Nuc;
 use crate::utils::types::SeqByContig;
 use anyhow::{Result, anyhow};
