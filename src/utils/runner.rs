@@ -9,7 +9,7 @@ use crate::utils::read_models::read_quality_score_model_json;
 use crate::utils::ref_mutation_model::RefMutationModel;
 use crate::utils::vcf_tools::write_vcf;
 use anyhow::Result;
-use log::info;
+use log::{info, trace};
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
@@ -56,6 +56,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         &output_prefix.display()
     );
     mut_model.write_to_file(&output_prefix)?;
+    trace!("mutation model {:?}", mut_model.mm);
 
     // Mutate the reference and record the variant locations.
     info!("Mutating reference.");

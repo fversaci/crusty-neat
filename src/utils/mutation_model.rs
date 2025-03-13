@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Mutations independent of the reference genome.
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MutationModel {
     /// Probabilities of different mutation types.
     pub mut_probabilities: MutProbabilities,
@@ -36,7 +36,7 @@ impl MutationModel {
 pub type MutRateByContig = HashMap<String, Vec<Region>>;
 
 /// A struct for storing a region of a contig with a mutation rate.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Region {
     pub start: usize,
     pub end: usize,
@@ -44,7 +44,7 @@ pub struct Region {
 }
 
 /// A struct for storing probabilities of different mutation types.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MutProbabilities {
     p: HashMap<MutationType, f64>,
 }
@@ -60,7 +60,7 @@ impl Default for MutProbabilities {
 }
 
 /// A model for SNP mutations.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SnpModel {
     a: WeightedIndex<f64>,
     c: WeightedIndex<f64>,
@@ -103,7 +103,7 @@ impl SnpModel {
 }
 
 /// A model for insertion mutations.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InsModel {
     /// Weighted index for the length of the insertion.
     length: WeightedIndex<f64>,
@@ -129,7 +129,7 @@ impl InsModel {
 }
 
 /// A model for deletion mutations.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DelModel {
     /// Weighted index for the length of the deletion.
     length: WeightedIndex<f64>,
