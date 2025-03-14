@@ -52,8 +52,8 @@ impl Mutation {
         match self {
             // skip changed Nuc
             Mutation::Snp { pos, .. } => (*pos, pos + 1),
-            // Insertion, skip nothing
-            Mutation::Ins { pos, .. } => (*pos, *pos),
+            // Insertion, first base
+            Mutation::Ins { pos, .. } => (*pos, pos + 1),
             // Skip deleted part
             Mutation::Del { pos, ref_bases } => (pos + 1, pos + ref_bases.len()),
         }
