@@ -124,8 +124,8 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
             quality_score_model,
             rng,
         )?;
-        info!("Processing complete")
     }
+    info!("Processing complete");
     Ok(())
 }
 
