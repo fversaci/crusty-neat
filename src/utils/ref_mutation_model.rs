@@ -29,7 +29,8 @@ impl<'a> RefMutationModel<'a> {
             ));
         }
         let mut mut_rates = MutRateByContig::new();
-        for (contig, seq) in self.ref_genome.unwrap() {
+        for entry in self.ref_genome.unwrap().iter() {
+            let (contig, seq) = (entry.key(), entry.value());
             let mut_rates_by_contig = vec![Region {
                 start: 0,
                 end: seq.len(),
@@ -77,7 +78,7 @@ impl<'a> RefMutationModel<'a> {
                 return Err(anyhow!("Contig {} not present in reference genome", contig));
             }
             for region in regions {
-                if region.end > ref_genome[contig].len() {
+                if region.end > ref_genome.get(contig).unwrap().len() {
                     return Err(anyhow!("Region extends beyond contig {} length", contig));
                 }
             }

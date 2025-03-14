@@ -87,7 +87,8 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
 
     if config.produce_fastq == Some(true) {
         let mut read_sets: HashSet<Vec<Nuc>> = HashSet::new();
-        for (_name, sequence) in mut_genome.iter() {
+        for entry in mut_genome.iter() {
+            let sequence = entry.value();
             // defined as a set of read sequences that should cover
             // the mutated sequence `coverage` number of times
             let data_set = generate_reads(

@@ -13,11 +13,11 @@
 // To generate quality scores, they follow the following procedure:
 //   * Sample the first element (1D vector) for initial quality score.
 //   * For next position, the previous Q score determines which
-//   N-length set of weights to use to determine the next quality
-//   score
+//     N-length set of weights to use to determine the next quality
+//     score
 // Advantages of this approach:
 //   * Does a fairly effective job of modeling shapes of the quality
-//   scores for a set read length
+//     scores for a set read length
 // Disadvantages of this approach:
 //   * The fact that we're working with a matrix with a different
 //     first element is extremely confusing
@@ -27,7 +27,7 @@
 //   * Assumes a fixed read length, meaning you have to extrapolate
 //   for longer read lengths.
 //   * In Python, at least, this was slow, although in retrospect it
-//   didn't eat up much memory.
+//     didn't eat up much memory.
 use crate::utils::file_tools::open_file;
 use anyhow::{Result, anyhow};
 use rand::Rng;

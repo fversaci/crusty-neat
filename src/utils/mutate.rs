@@ -33,7 +33,7 @@ pub fn mutate_genome<R: Rng>(
     let mut mutations: MutByContig = HashMap::new();
     let mut_rates = mutation_model.mut_rates.clone().unwrap();
     for (contig, regions) in mut_rates {
-        let sequence = &genome[&contig];
+        let sequence = &genome.get(&contig).unwrap();
         for region in regions {
             debug!(
                 "Segment of {}: from {} to {}.",
@@ -106,10 +106,10 @@ fn mutate_region<R: Rng>(
 ///
 /// We assume mutations are ordered based on the start of their interference range
 pub fn apply_mutations(genome: &SeqByContig, mutations: &MutByContig) -> Result<SeqByContig> {
-    let mut new_genome = SeqByContig::new();
+    let new_genome = SeqByContig::new();
     for (contig, mutations) in mutations {
         let mut prev = 0;
-        let sequence = new_genome.entry(contig.clone()).or_default();
+        let mut sequence = new_genome.entry(contig.clone()).or_default();
         let ref_sequence = genome
             .get(contig)
             .ok_or_else(|| anyhow!("contig {} not found in reference genome", contig))?;
@@ -144,7 +144,8 @@ mod tests {
     fn test_mutate_genome() -> Result<()> {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
-        let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
+        let genome: SeqByContig = SeqByContig::new();
+        genome.insert("chr1".to_string(), seq.clone());
         let mut_model = RefMutationModel::new_all_contigs(&genome, 0.1)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
@@ -167,7 +168,8 @@ mod tests {
     fn test_mutate_genome_no_mutations() -> Result<()> {
         let mut rng = create_rng(Some("Hello Cruel World"));
         let seq: Vec<Nuc> = random_seq(&mut rng, 100);
-        let genome: SeqByContig = HashMap::from([("chr1".to_string(), seq.clone())]);
+        let genome: SeqByContig = SeqByContig::new();
+        genome.insert("chr1".to_string(), seq.clone());
         let mut_model = RefMutationModel::new_all_contigs(&genome, 0.0)?;
         let mutations = mutate_genome(&genome, &mut_model, &mut rng)?;
         assert!(mutations.contains_key("chr1"));
