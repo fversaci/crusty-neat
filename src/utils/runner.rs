@@ -27,10 +27,6 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         .join(config.output_prefix.unwrap());
 
     // Read the reference file into memory
-    info!(
-        "Mapping reference fasta file: {}",
-        config.reference.as_ref().unwrap().display()
-    );
     let (ref_genome, contig_order) = read_fasta(config.reference.as_ref().unwrap())?;
 
     // Read mutation model from file or generate a default one
