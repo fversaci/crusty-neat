@@ -12,7 +12,6 @@ use anyhow::Result;
 use log::{info, trace};
 use rand::Rng;
 use rand::seq::SliceRandom;
-use std::collections::HashSet;
 use std::path::Path;
 
 /// Mutate the reference genome and generate the output files
@@ -84,7 +83,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
 
     if config.produce_fastq == Some(true) {
         info!("Generating reads");
-        let mut read_sets: HashSet<Vec<Nuc>> = HashSet::new();
+        let mut read_sets: Vec<Vec<Nuc>> = Vec::new();
         for entry in mut_genome.iter() {
             let sequence = entry.value();
             // defined as a set of read sequences that should cover
