@@ -55,7 +55,7 @@ pub fn read_fasta(fasta_path: &PathBuf) -> Result<(SeqByContig, Vec<String>)> {
     };
 
     // Read contigs in parallel
-    info!("Parsing fasta: {}", fasta_path.display());
+    info!("Parsing fasta");
     contigs.par_iter().enumerate().for_each(read_closure);
 
     Ok((genome, contigs))

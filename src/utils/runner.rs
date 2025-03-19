@@ -5,7 +5,7 @@ use crate::utils::file_tools::check_create_dir;
 use crate::utils::make_reads::generate_reads;
 use crate::utils::mutate::{apply_mutations, mutate_genome};
 use crate::utils::nucleotides::Nuc;
-use crate::utils::read_models::read_quality_score_model_json;
+use crate::utils::quality_model::QualityModel;
 use crate::utils::ref_mutation_model::RefMutationModel;
 use crate::utils::vcf_tools::write_vcf;
 use anyhow::Result;
@@ -13,6 +13,7 @@ use log::{info, trace};
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
+use std::path::Path;
 
 /// Mutate the reference genome and generate the output files
 pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
@@ -82,6 +83,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     }
 
     if config.produce_fastq == Some(true) {
+        info!("Generating reads");
         let mut read_sets: HashSet<Vec<Nuc>> = HashSet::new();
         for entry in mut_genome.iter() {
             let sequence = entry.value();
@@ -105,20 +107,24 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
         outsets_order.shuffle(rng);
 
-        // Load the quality score model, which simulates sequencing error rates
-        // by generating quality scores for the produced reads.
-        // Currently, we use the original model from NEAT2.0.
-        let default_quality_score_model_file = "models/neat_quality_score_model.json";
-        let quality_score_model = read_quality_score_model_json(default_quality_score_model_file)?;
+        // Load the quality score model, which simulates sequencing
+        // error rates by generating quality scores for the produced
+        // reads. Currently, we use the original model from NEAT2.0.
+        let qs_file = Path::new("models/qs_model.yml.gz");
+        info!(
+            "Reading quality score model from file {}",
+            &qs_file.display()
+        );
+        let quality_model = QualityModel::from_file(qs_file)?;
 
-        info!("Writing fastq");
+        info!("Writing reads to fastq");
         write_fastq(
             &output_prefix,
             config.overwrite_output.unwrap(),
             config.paired_ended.unwrap(),
             outsets,
             outsets_order,
-            quality_score_model,
+            quality_model,
             rng,
         )?;
     }

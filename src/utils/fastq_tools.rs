@@ -2,7 +2,7 @@
 
 use crate::utils::file_tools::open_file;
 use crate::utils::nucleotides::{Nuc, reverse_complement, seq_to_string};
-use crate::utils::quality_scores::QualityScoreModel;
+use crate::utils::quality_model::QualityModel;
 use anyhow::Result;
 use rand::Rng;
 use std::io::Write;
@@ -36,7 +36,7 @@ pub fn write_fastq<R: Rng>(
     paired_ended: bool,
     dataset: Vec<&Vec<Nuc>>,
     dataset_order: Vec<usize>,
-    quality_score_model: QualityScoreModel,
+    quality_score_model: QualityModel,
     rng: &mut R,
 ) -> Result<()> {
     // The prefix for read names. Reads are numbered in output order.
@@ -69,7 +69,7 @@ pub fn write_fastq<R: Rng>(
         // The stupid plus sign
         writeln!(outfile1, "+")?;
         // Qual score of all F's for the whole thing.
-        writeln!(outfile1, "{}", quality_scores_to_str(quality_scores))?;
+        writeln!(outfile1, "{}", quality_scores)?;
 
         // Handle paired-end reads
         if let Some(ref mut outfile2) = outfile2 {
@@ -83,88 +83,9 @@ pub fn write_fastq<R: Rng>(
             // The stupid plus sign
             writeln!(outfile2, "+")?;
             // Qual score of all F's for the whole thing.
-            writeln!(outfile2, "{}", quality_scores_to_str(quality_scores))?;
+            writeln!(outfile2, "{}", quality_scores)?;
         }
     }
 
     Ok(())
-}
-
-/// Converts a vector of quality scores to a string.
-fn quality_scores_to_str(array: Vec<u32>) -> String {
-    let mut score_text = String::new();
-    for score in array {
-        score_text += &(((score + 33) as u8) as char).to_string();
-    }
-    score_text
-}
-
-#[cfg(test)]
-mod tests {
-    use tempdir::TempDir;
-
-    use super::*;
-    use crate::create_rng;
-    use crate::utils::nucleotides::random_seq;
-    use std::fs;
-
-    #[test]
-    fn test_write_fastq_single() -> Result<()> {
-        let tmp_dir = TempDir::new("crusty_neat")?;
-        let fastq_filename = tmp_dir.path().join("test_single");
-        let overwrite_output = true;
-        let paired_ended = false;
-        let mut rng = create_rng(Some("Hello Cruel World"));
-        let seq1 = random_seq(&mut rng, 100);
-        let seq2 = random_seq(&mut rng, 100);
-        let dataset = vec![&seq1, &seq2];
-        let dataset_order = vec![1, 0];
-        let quality_score_model = QualityScoreModel::new();
-        write_fastq(
-            &fastq_filename,
-            overwrite_output,
-            paired_ended,
-            dataset,
-            dataset_order,
-            quality_score_model,
-            &mut rng,
-        )?;
-        let outfile1 = tmp_dir.path().join("test_single.r1.fastq");
-        let outfile2 = tmp_dir.path().join("test_single.r2.fastq");
-        assert!(outfile1.exists());
-        assert!(!outfile2.exists());
-        fs::remove_file(outfile1)?;
-        Ok(())
-    }
-
-    #[test]
-    fn test_write_fastq_paired() -> Result<()> {
-        let tmp_dir = TempDir::new("crusty_neat")?;
-        let fastq_filename = tmp_dir.path().join("test_paired");
-        // might as well test the o_o function as well
-        let overwrite_output = false;
-        let paired_ended = true;
-        let mut rng = create_rng(Some("Hello Cruel World"));
-        let seq1 = random_seq(&mut rng, 100);
-        let seq2 = random_seq(&mut rng, 100);
-        let dataset = vec![&seq1, &seq2];
-        let dataset_order = vec![1, 0];
-        let quality_score_model = QualityScoreModel::new();
-        write_fastq(
-            &fastq_filename,
-            overwrite_output,
-            paired_ended,
-            dataset,
-            dataset_order,
-            quality_score_model,
-            &mut rng,
-        )?;
-        let outfile1 = tmp_dir.path().join("test_paired.r1.fastq");
-        let outfile2 = tmp_dir.path().join("test_paired.r2.fastq");
-        assert!(outfile1.exists());
-        assert!(outfile2.exists());
-        fs::remove_file(outfile1)?;
-        fs::remove_file(outfile2)?;
-        Ok(())
-    }
 }

@@ -11,10 +11,10 @@ paired_ended: null
 fragment_mean: null
 fragment_st_dev: null
 
+produce_fastq: null
 produce_bam: null
 produce_vcf: null
 produce_fasta: null
-produce_fastq: null
 
 overwrite_output: null
 output_dir: null
