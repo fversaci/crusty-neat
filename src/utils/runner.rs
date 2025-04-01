@@ -47,10 +47,6 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
     }
 
     // serialize the mutation model to a yaml file
-    info!(
-        "Saving final mutation model to file {}",
-        &output_prefix.display()
-    );
     mut_model.write_to_file(&output_prefix)?;
     trace!("mutation model {:?}", mut_model.mm);
 
