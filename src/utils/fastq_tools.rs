@@ -11,73 +11,6 @@ use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::Path;
 
-/// Writes FASTQ files based on the provided dataset.
-///
-/// # Arguments
-///
-/// * `fastq_filename` - The prefix for the output FASTQ files.
-/// * `overwrite_output` - A boolean flag to enable or disable overwriting
-///   existing files.
-/// * `paired_ended` - A boolean flag to enable or disable paired-end mode.
-/// * `dataset` - A list of `Vec<Nuc>` representing DNA sequences.
-/// * `dataset_order` - A list of indices to order the dataset.
-/// * `quality_score_model` - A `QualityScoreModel` object to generate
-///   quality scores.
-/// * `rng` - A random number generator.
-pub fn write_fastq<R: Rng>(
-    output_prefix: &Path,
-    overwrite_output: bool,
-    paired_ended: bool,
-    dataset: Vec<&Vec<Nuc>>,
-    dataset_order: Vec<usize>,
-    quality_score_model: QualityModel,
-    rng: &mut R,
-) -> Result<()> {
-    let filename1 = output_prefix.with_extension("r1.fastq");
-    let mut outfile1 = open_file(&filename1, overwrite_output)?;
-    // Setting up pairend ended reads. For single ended reads,
-    // we have outfile2 = None
-    let mut outfile2 = if paired_ended {
-        let filename2 = output_prefix.with_extension("r2.fastq");
-        Some(open_file(&filename2, overwrite_output)?)
-    } else {
-        None
-    };
-
-    // Write sequences. Ordered index is used for numbering, while
-    // read_index is from the shuffled index array from a previous
-    // step.
-    let name_prefix = "crusty_neat_generated_";
-    for (order_index, &read_index) in dataset_order.iter().enumerate() {
-        let sequence = dataset[read_index];
-        write_sequence(
-            &mut outfile1,
-            name_prefix,
-            order_index,
-            sequence,
-            &quality_score_model,
-            rng,
-            1,
-        )?;
-
-        // Handle paired-end reads
-        if let Some(ref mut outfile2) = outfile2 {
-            let rev_comp_sequence = reverse_complement(sequence);
-            write_sequence(
-                outfile2,
-                name_prefix,
-                order_index,
-                &rev_comp_sequence,
-                &quality_score_model,
-                rng,
-                2,
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
 fn write_sequence<W: Write>(
     outfile: &mut W,
     name_prefix: &str,
@@ -107,7 +40,19 @@ fn write_sequence<W: Write>(
     Ok(())
 }
 
-pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
+/// Writes the input reads as FASTQ files (in parallel).
+///
+/// # Arguments
+///
+/// * `fastq_filename` - The prefix for the output FASTQ files.
+/// * `overwrite_output` - A boolean flag to enable or disable overwriting
+///   existing files.
+/// * `paired_ended` - A boolean flag to enable or disable paired-end mode.
+/// * `reads` - A list of `Vec<Nuc>` representing DNA sequences.
+/// * `quality_score_model` - A `QualityScoreModel` object to generate
+///   quality scores.
+/// * `rng` - A random number generator.
+pub fn write_fastq<R: Rng + Send + Sync + Clone>(
     output_prefix: &Path,
     overwrite_output: bool,
     paired_ended: bool,

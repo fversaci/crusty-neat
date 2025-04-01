@@ -1,6 +1,6 @@
 use crate::utils::config::RunConfiguration;
 use crate::utils::fasta_tools::{read_fasta, write_fasta};
-use crate::utils::fastq_tools::{write_fastq, write_fastq_parallel};
+use crate::utils::fastq_tools::write_fastq;
 use crate::utils::file_tools::check_create_dir;
 use crate::utils::make_reads::generate_reads;
 use crate::utils::mutate::{apply_mutations, mutate_genome};
@@ -112,7 +112,7 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
         let quality_model = QualityModel::from_file(qs_file)?;
 
         info!("Writing reads to fastq");
-        write_fastq_parallel(
+        write_fastq(
             &output_prefix,
             config.overwrite_output.unwrap(),
             config.paired_ended.unwrap(),
