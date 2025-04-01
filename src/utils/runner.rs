@@ -79,9 +79,10 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
 
     if config.produce_fastq == Some(true) {
         info!("Generating reads");
-        let mut read_sets: Vec<Vec<Nuc>> = Vec::new();
-        for entry in mut_genome.iter() {
-            let sequence = entry.value();
+        // Convert DashMap to Vec<Vec<Nuc>>
+        let sequences: Vec<Vec<Nuc>> = mut_genome.into_iter().map(|(_, v)| v).collect();
+        let mut reads: Vec<&[Nuc]> = Vec::new();
+        for sequence in &sequences {
             // defined as a set of read sequences that should cover
             // the mutated sequence `coverage` number of times
             let data_set = generate_reads(
@@ -94,13 +95,11 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
                 rng,
             )?;
 
-            read_sets.extend(data_set);
+            reads.extend(data_set);
         }
 
         info!("Shuffling reads");
-        let outsets: Vec<&Vec<Nuc>> = read_sets.iter().collect();
-        let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
-        outsets_order.shuffle(rng);
+        reads.shuffle(rng);
 
         // Load the quality score model, which simulates sequencing
         // error rates by generating quality scores for the produced
@@ -117,8 +116,7 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
             &output_prefix,
             config.overwrite_output.unwrap(),
             config.paired_ended.unwrap(),
-            outsets,
-            outsets_order,
+            reads,
             quality_model,
             &mut rng.clone(),
         )?;

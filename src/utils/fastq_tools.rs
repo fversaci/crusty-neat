@@ -111,8 +111,7 @@ pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
     output_prefix: &Path,
     overwrite_output: bool,
     paired_ended: bool,
-    dataset: Vec<&Vec<Nuc>>,
-    dataset_order: Vec<usize>,
+    reads: Vec<&[Nuc]>,
     quality_score_model: QualityModel,
     rng: &mut R,
 ) -> Result<()> {
@@ -124,7 +123,7 @@ pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
         create_dir_all(&dir2)?;
     }
     let max_chunk = 100000;
-    dataset_order
+    reads
         .par_chunks(max_chunk)
         .enumerate()
         .try_for_each(|(chunk_index, chunk)| -> Result<()> {
@@ -135,8 +134,7 @@ pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
             let file1_path = dir1.join(format!("{}.fastq", chunk_index));
             let mut file1 = open_file(&file1_path, overwrite_output)?;
 
-            for (order_index, &read_index) in chunk.iter().enumerate() {
-                let sequence = dataset[read_index];
+            for (order_index, sequence) in chunk.iter().enumerate() {
                 write_sequence(
                     &mut file1,
                     &name_prefix,
@@ -151,8 +149,7 @@ pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
             if paired_ended {
                 let file2_path = dir2.join(format!("{}.fastq", chunk_index));
                 let mut file2 = open_file(&file2_path, overwrite_output)?;
-                for (order_index, &read_index) in chunk.iter().enumerate() {
-                    let sequence = dataset[read_index];
+                for (order_index, sequence) in chunk.iter().enumerate() {
                     let rev_comp_sequence = reverse_complement(sequence);
                     write_sequence(
                         &mut file2,

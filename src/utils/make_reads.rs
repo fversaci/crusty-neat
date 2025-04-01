@@ -88,15 +88,15 @@ fn cover_dataset<R: Rng>(
 /// # Returns
 ///
 /// Vec of vectors representing the read sequences.
-pub fn generate_reads<R: Rng>(
-    mutated_sequence: &[Nuc],
+pub fn generate_reads<'a, R: Rng>(
+    mutated_sequence: &'a [Nuc],
     read_length: &usize,
     coverage: &usize,
     paired_ended: bool,
     mean: Option<f64>,
     st_dev: Option<f64>,
     rng: &mut R,
-) -> Result<Vec<Vec<Nuc>>> {
+) -> Result<Vec<&'a [Nuc]>> {
     let fragment_distribution = if paired_ended {
         IntDistribution::new_normal(
             mean.ok_or_else(|| anyhow!("mean can't be None when paired_ended is true"))?,
@@ -107,7 +107,7 @@ pub fn generate_reads<R: Rng>(
     };
 
     // set up some defaults and storage
-    let mut read_set: Vec<Vec<Nuc>> = Vec::new();
+    let mut read_set: Vec<&[Nuc]> = Vec::new();
     // length of the mutated sequence
     let seq_len = mutated_sequence.len();
     // Generate a vector of read positions
@@ -196,7 +196,7 @@ mod tests {
             &mut rng,
         )?;
         println!("{:?}", reads);
-        assert!(reads.contains(&mutated_sequence[0..read_length].to_vec()));
+        assert!(reads.contains(&&mutated_sequence[0..read_length]));
         Ok(())
     }
 
