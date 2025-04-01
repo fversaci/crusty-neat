@@ -21,15 +21,6 @@ use std::path::Path;
 /// * `quality_score_model` - A `QualityScoreModel` object to generate
 ///   quality scores.
 /// * `rng` - A random number generator.
-///
-/// # Returns
-///
-/// Returns `()` if successful. Throws an error if there is a problem.
-///
-/// # Notes
-///
-/// Currently, only a single R1 file is written, but future versions
-/// will support both R1 and R2 files.
 pub fn write_fastq<R: Rng>(
     output_prefix: &Path,
     overwrite_output: bool,
@@ -57,35 +48,59 @@ pub fn write_fastq<R: Rng>(
     // step.
     for (order_index, &read_index) in dataset_order.iter().enumerate() {
         let sequence = dataset[read_index];
-        let read_length = sequence.len();
-
-        // Generate quality scores for read1
-        let quality_scores = quality_score_model.generate_quality_scores(read_length, rng)?;
-
-        // sequence name
-        writeln!(outfile1, "@{}{}/1", name_prefix, order_index + 1)?;
-        // Array as a string
-        writeln!(outfile1, "{}", seq_to_string(sequence))?;
-        // The stupid plus sign
-        writeln!(outfile1, "+")?;
-        // Qual score of all F's for the whole thing.
-        writeln!(outfile1, "{}", quality_scores)?;
+        write_sequence(
+            &mut outfile1,
+            name_prefix,
+            order_index,
+            sequence,
+            &quality_score_model,
+            rng,
+            1,
+        )?;
 
         // Handle paired-end reads
         if let Some(ref mut outfile2) = outfile2 {
-            let quality_scores = quality_score_model.generate_quality_scores(read_length, rng)?;
-
             let rev_comp_sequence = reverse_complement(sequence);
-            // sequence name
-            writeln!(outfile2, "@{}{}/2", name_prefix, order_index + 1)?;
-            // Array as a string
-            writeln!(outfile2, "{}", seq_to_string(&rev_comp_sequence))?;
-            // The stupid plus sign
-            writeln!(outfile2, "+")?;
-            // Qual score of all F's for the whole thing.
-            writeln!(outfile2, "{}", quality_scores)?;
+            write_sequence(
+                outfile2,
+                name_prefix,
+                order_index,
+                &rev_comp_sequence,
+                &quality_score_model,
+                rng,
+                2,
+            )?;
         }
     }
+
+    Ok(())
+}
+
+fn write_sequence<W: Write>(
+    outfile: &mut W,
+    name_prefix: &str,
+    order_index: usize,
+    sequence: &[Nuc],
+    quality_score_model: &QualityModel,
+    rng: &mut impl Rng,
+    read_number: u8,
+) -> Result<()> {
+    let read_length = sequence.len();
+    let quality_scores = quality_score_model.generate_quality_scores(read_length, rng)?;
+
+    // sequence id
+    writeln!(
+        outfile,
+        "@{}{}/{}",
+        name_prefix,
+        order_index + 1,
+        read_number
+    )?;
+    // sequence
+    writeln!(outfile, "{}", seq_to_string(sequence))?;
+    writeln!(outfile, "+")?;
+    // quality scores
+    writeln!(outfile, "{}", quality_scores)?;
 
     Ok(())
 }
