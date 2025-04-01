@@ -12,7 +12,6 @@ use crate::utils::nucleotides::Nuc;
 use anyhow::{Result, anyhow};
 use rand::Rng;
 use rand_distr::Distribution;
-use std::collections::HashSet;
 
 /// Covers a sequence by selecting random reads. Starts at the
 /// beginning, advances by one read length, then jumps forward by a
@@ -88,7 +87,7 @@ fn cover_dataset<R: Rng>(
 ///
 /// # Returns
 ///
-/// HashSet of vectors representing the read sequences.
+/// Vec of vectors representing the read sequences.
 pub fn generate_reads<R: Rng>(
     mutated_sequence: &[Nuc],
     read_length: &usize,
@@ -97,7 +96,7 @@ pub fn generate_reads<R: Rng>(
     mean: Option<f64>,
     st_dev: Option<f64>,
     rng: &mut R,
-) -> Result<HashSet<Vec<Nuc>>> {
+) -> Result<Vec<Vec<Nuc>>> {
     let fragment_distribution = if paired_ended {
         IntDistribution::new_normal(
             mean.ok_or_else(|| anyhow!("mean can't be None when paired_ended is true"))?,
@@ -108,7 +107,7 @@ pub fn generate_reads<R: Rng>(
     };
 
     // set up some defaults and storage
-    let mut read_set: HashSet<Vec<Nuc>> = HashSet::new();
+    let mut read_set: Vec<Vec<Nuc>> = Vec::new();
     // length of the mutated sequence
     let seq_len = mutated_sequence.len();
     // Generate a vector of read positions
@@ -122,7 +121,7 @@ pub fn generate_reads<R: Rng>(
     );
     // Generate the reads from the read positions.
     for (start, end) in read_positions {
-        read_set.insert(mutated_sequence[start..end].into());
+        read_set.push(mutated_sequence[start..end].into());
     }
     // puts the reads in the heap.
     if read_set.is_empty() {
@@ -197,7 +196,7 @@ mod tests {
             &mut rng,
         )?;
         println!("{:?}", reads);
-        assert!(reads.contains(&mutated_sequence[0..read_length]));
+        assert!(reads.contains(&mutated_sequence[0..read_length].to_vec()));
         Ok(())
     }
 
