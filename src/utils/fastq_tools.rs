@@ -5,6 +5,9 @@ use crate::utils::nucleotides::{Nuc, reverse_complement, seq_to_string};
 use crate::utils::quality_model::QualityModel;
 use anyhow::Result;
 use rand::Rng;
+use rayon::iter::{IndexedParallelIterator, ParallelIterator};
+use rayon::prelude::ParallelSlice;
+use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::Path;
 
@@ -30,8 +33,6 @@ pub fn write_fastq<R: Rng>(
     quality_score_model: QualityModel,
     rng: &mut R,
 ) -> Result<()> {
-    // The prefix for read names. Reads are numbered in output order.
-    let name_prefix = "neat_generated_";
     let filename1 = output_prefix.with_extension("r1.fastq");
     let mut outfile1 = open_file(&filename1, overwrite_output)?;
     // Setting up pairend ended reads. For single ended reads,
@@ -46,6 +47,7 @@ pub fn write_fastq<R: Rng>(
     // Write sequences. Ordered index is used for numbering, while
     // read_index is from the shuffled index array from a previous
     // step.
+    let name_prefix = "crusty_neat_generated_";
     for (order_index, &read_index) in dataset_order.iter().enumerate() {
         let sequence = dataset[read_index];
         write_sequence(
@@ -103,4 +105,67 @@ fn write_sequence<W: Write>(
     writeln!(outfile, "{}", quality_scores)?;
 
     Ok(())
+}
+
+pub fn write_fastq_parallel<R: Rng + Send + Sync + Clone>(
+    output_prefix: &Path,
+    overwrite_output: bool,
+    paired_ended: bool,
+    dataset: Vec<&Vec<Nuc>>,
+    dataset_order: Vec<usize>,
+    quality_score_model: QualityModel,
+    rng: &mut R,
+) -> Result<()> {
+    let dir1 = output_prefix.with_extension("reads_R1");
+    let dir2 = output_prefix.with_extension("reads_R2");
+
+    create_dir_all(&dir1)?;
+    if paired_ended {
+        create_dir_all(&dir2)?;
+    }
+    let max_chunk = 100000;
+    dataset_order
+        .par_chunks(max_chunk)
+        .enumerate()
+        .try_for_each(|(chunk_index, chunk)| -> Result<()> {
+            if chunk.is_empty() {
+                return Ok(());
+            }
+            let name_prefix = format!("crusty_neat_generated_{}_", chunk_index);
+            let file1_path = dir1.join(format!("{}.fastq", chunk_index));
+            let mut file1 = open_file(&file1_path, overwrite_output)?;
+
+            for (order_index, &read_index) in chunk.iter().enumerate() {
+                let sequence = dataset[read_index];
+                write_sequence(
+                    &mut file1,
+                    &name_prefix,
+                    order_index,
+                    sequence,
+                    &quality_score_model,
+                    &mut rng.clone(),
+                    1,
+                )?;
+            }
+
+            if paired_ended {
+                let file2_path = dir2.join(format!("{}.fastq", chunk_index));
+                let mut file2 = open_file(&file2_path, overwrite_output)?;
+                for (order_index, &read_index) in chunk.iter().enumerate() {
+                    let sequence = dataset[read_index];
+                    let rev_comp_sequence = reverse_complement(sequence);
+                    write_sequence(
+                        &mut file2,
+                        &name_prefix,
+                        order_index,
+                        &rev_comp_sequence,
+                        &quality_score_model,
+                        &mut rng.clone(),
+                        2,
+                    )?;
+                }
+            }
+
+            Ok(())
+        })
 }

@@ -1,6 +1,6 @@
 use crate::utils::config::RunConfiguration;
 use crate::utils::fasta_tools::{read_fasta, write_fasta};
-use crate::utils::fastq_tools::write_fastq;
+use crate::utils::fastq_tools::{write_fastq, write_fastq_parallel};
 use crate::utils::file_tools::check_create_dir;
 use crate::utils::make_reads::generate_reads;
 use crate::utils::mutate::{apply_mutations, mutate_genome};
@@ -15,7 +15,7 @@ use rand::seq::SliceRandom;
 use std::path::Path;
 
 /// Mutate the reference genome and generate the output files
-pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
+pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mut R) -> Result<()> {
     // check that the configuration is valid and create the output directory
     config.check()?;
     check_create_dir(config.output_dir.as_ref().unwrap())?;
@@ -101,7 +101,7 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
             read_sets.extend(data_set);
         }
 
-        info!("Shuffling output fastq data");
+        info!("Shuffling reads");
         let outsets: Vec<&Vec<Nuc>> = read_sets.iter().collect();
         let mut outsets_order: Vec<usize> = (0..outsets.len()).collect();
         outsets_order.shuffle(rng);
@@ -117,14 +117,14 @@ pub fn run_neat<R: Rng>(config: RunConfiguration, rng: &mut R) -> Result<()> {
         let quality_model = QualityModel::from_file(qs_file)?;
 
         info!("Writing reads to fastq");
-        write_fastq(
+        write_fastq_parallel(
             &output_prefix,
             config.overwrite_output.unwrap(),
             config.paired_ended.unwrap(),
             outsets,
             outsets_order,
             quality_model,
-            rng,
+            &mut rng.clone(),
         )?;
     }
     info!("Processing complete");
