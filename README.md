@@ -3,12 +3,11 @@
 A diverging fork of the
 [rusty_neat](https://github.com/ncsa/rusty-neat) project, designed to
 simulate genomic mutations and generate sequencing reads based on a
-reference genome.
-
-In this fork, most of the original code has been rewritten to optimize
-performance and shared-memory parallelism, adopting libraries such as
-[DashMap](https://github.com/xacrimon/dashmap),
-[Rayon](https://github.com/rayon-rs/rayon), for improved performance.
+reference genome. In this version, a significant portion of the
+original code has been rewritten to optimize performance and
+shared-memory parallelism, adopting libraries like
+[DashMap](https://github.com/xacrimon/dashmap) and
+[Rayon](https://github.com/rayon-rs/rayon) for improved efficiency.
 
 🚧 **Work in Progress**: This project is actively being developed, and
 changes are ongoing.
