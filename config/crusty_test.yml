@@ -4,6 +4,7 @@ coverage: 5
 
 def_mutation_rate: 0.001
 mutation_model: models/mut_model.yml
+quality_model: models/quality_model.yml.gz
 rng_seed: null
 
 ploidy: 2

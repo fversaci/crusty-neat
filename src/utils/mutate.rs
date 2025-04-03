@@ -85,11 +85,12 @@ fn mutate_region<R: Rng>(
         let positions: Vec<usize> = (0..num_mut)
             .map(|_| rng.random_range(region.start..region.end))
             .collect();
-        mutations.extend(
-            positions
-                .into_iter()
-                .filter_map(|pos| mutation_model.create_mutation(m, sequence, pos, rng).ok()),
-        );
+        mutations.extend(positions.into_iter().filter_map(|pos| {
+            mutation_model
+                .mm
+                .create_mutation(m, sequence, pos, rng)
+                .ok()
+        }));
     }
     // sort and filter out incompatible mutations
     debug!("Total of {} potential mutations", mutations.len());
@@ -108,27 +109,11 @@ fn mutate_region<R: Rng>(
 pub fn apply_mutations(genome: &SeqByContig, mutations: &MutByContig) -> Result<SeqByContig> {
     let new_genome = SeqByContig::new();
     for (contig, mutations) in mutations {
-        let mut prev = 0;
         let mut sequence = new_genome.entry(contig.clone()).or_default();
         let ref_sequence = genome
             .get(contig)
             .ok_or_else(|| anyhow!("contig {} not found in reference genome", contig))?;
-        for mutation in mutations {
-            let (start, end) = mutation.get_skip_range();
-            sequence.extend(&ref_sequence[prev..start]);
-            prev = end;
-            match mutation {
-                Mutation::Snp { alt_base, .. } => {
-                    sequence.push(*alt_base);
-                }
-                Mutation::Ins { alt_bases, .. } => {
-                    sequence.extend(alt_bases);
-                }
-                Mutation::Del { .. } => {
-                    // do nothing
-                }
-            }
-        }
+        mutation::apply_seq_mutations(&ref_sequence, &mut sequence, mutations);
     }
     Ok(new_genome)
 }

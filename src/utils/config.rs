@@ -36,6 +36,9 @@ pub struct RunConfiguration {
     /// Path to the mutation model
     #[arg(long)]
     pub mutation_model: Option<PathBuf>,
+    /// Path to the quality model
+    #[arg(long)]
+    pub quality_model: Option<PathBuf>,
     /// Ploidy of the organism
     #[arg(long)]
     pub ploidy: Option<usize>,
@@ -83,6 +86,7 @@ impl RunConfiguration {
             coverage: Some(10),
             def_mutation_rate: Some(0.001),
             mutation_model: None,
+            quality_model: None,
             ploidy: Some(2),
             paired_ended: Some(false),
             fragment_mean: None,
@@ -191,6 +195,7 @@ mod tests {
             coverage: Some(10),
             def_mutation_rate: Some(0.001),
             mutation_model: None,
+            quality_model: Some(PathBuf::from("some_model.yml")),
             ploidy: Some(2),
             paired_ended: Some(false),
             fragment_mean: None,
@@ -211,6 +216,7 @@ mod tests {
             coverage: Some(20),
             def_mutation_rate: None,
             mutation_model: Some(PathBuf::from("some_model.yml")),
+            quality_model: None,
             ploidy: None,
             paired_ended: Some(true),
             fragment_mean: Some(200.0),
@@ -232,6 +238,7 @@ mod tests {
         assert_eq!(a.coverage, Some(20));
         assert_eq!(a.def_mutation_rate, Some(0.001));
         assert_eq!(a.mutation_model, Some(PathBuf::from("some_model.yml")));
+        assert_eq!(a.quality_model, Some(PathBuf::from("some_model.yml")));
         assert_eq!(a.ploidy, Some(2));
         assert_eq!(a.paired_ended, Some(true));
         assert_eq!(a.fragment_mean, Some(200.0));

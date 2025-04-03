@@ -12,7 +12,6 @@ use anyhow::Result;
 use log::{info, trace};
 use rand::Rng;
 use rand::seq::SliceRandom;
-use std::path::Path;
 
 /// Mutate the reference genome and generate the output files
 pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mut R) -> Result<()> {
@@ -104,12 +103,17 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
         // Load the quality score model, which simulates sequencing
         // error rates by generating quality scores for the produced
         // reads. Currently, we use the original model from NEAT2.0.
-        let qs_file = Path::new("models/qs_model.yml.gz");
-        info!(
-            "Reading quality score model from file {}",
-            &qs_file.display()
-        );
-        let quality_model = QualityModel::from_file(qs_file)?;
+        // Read mutation model from file or generate a default one
+        let quality_model;
+        if let Some(quality_model_file) = &config.quality_model {
+            info!(
+                "Reading quality model from file {}",
+                quality_model_file.display()
+            );
+            quality_model = QualityModel::from_file(quality_model_file)?;
+        } else {
+            return Err(anyhow::anyhow!("Quality model file not provided"));
+        };
 
         info!("Writing reads to fastq");
         write_fastq(
@@ -117,7 +121,7 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
             config.overwrite_output.unwrap(),
             config.paired_ended.unwrap(),
             reads,
-            quality_model,
+            &quality_model,
             &mut rng.clone(),
         )?;
     }

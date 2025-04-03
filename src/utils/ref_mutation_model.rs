@@ -1,10 +1,7 @@
-use crate::utils::mutation::{Mutation, MutationType};
 use crate::utils::mutation_model::{MutRateByContig, MutationModel, Region};
-use crate::utils::nucleotides::Nuc;
 use crate::utils::types::SeqByContig;
 use anyhow::{Result, anyhow};
 use log::info;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -99,44 +96,5 @@ impl<'a> RefMutationModel<'a> {
         let reader = std::io::BufReader::new(file);
         let conf: Self = serde_yaml::from_reader(reader)?;
         Ok(conf)
-    }
-    /// Create new snp mutation at given position
-    pub fn create_snp<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
-        let snp_model = &self.mm.snp_model;
-        let ref_base = seq[pos];
-        let alt_base = snp_model.choose_new_nuc(ref_base, rng)?;
-        // construct and return the mutation
-        Mutation::new_snp(pos, ref_base, alt_base)
-    }
-    /// Create new insert mutation at given position
-    pub fn create_ins<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
-        let ins_model = &self.mm.ins_model;
-        let ref_base = seq[pos];
-        let alt_bases = ins_model.get_alt_bases(ref_base, rng);
-        // construct and return the mutation
-        Mutation::new_ins(pos, ref_base, alt_bases)
-    }
-    /// Create new deletion mutation at given position
-    pub fn create_del<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
-        let del_model = &self.mm.del_model;
-        let max_len = seq.len() - pos - 1;
-        let len = 1 + del_model.get_len(max_len, rng); // delete after current base
-        let ref_seq = seq[pos..pos + len].to_vec();
-        // construct and return the mutation
-        Mutation::new_del(pos, ref_seq)
-    }
-    /// create new mutation
-    pub fn create_mutation<R: Rng>(
-        &self,
-        m: MutationType,
-        seq: &[Nuc],
-        pos: usize,
-        rng: &mut R,
-    ) -> Result<Mutation> {
-        match m {
-            MutationType::Snp => self.create_snp(seq, pos, rng),
-            MutationType::Ins => self.create_ins(seq, pos, rng),
-            MutationType::Del => self.create_del(seq, pos, rng),
-        }
     }
 }

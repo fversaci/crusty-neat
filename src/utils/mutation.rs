@@ -46,7 +46,7 @@ impl Mutation {
             Mutation::Del { pos, ref_bases } => (*pos, pos + ref_bases.len()),
         }
     }
-    /// Get the range of the reference sequence that can be skip after
+    /// Get the range of the reference sequence that can be skipped after
     /// applying the mutation
     pub fn get_skip_range(&self) -> (usize, usize) {
         match self {
@@ -134,6 +134,27 @@ pub fn sort_filter_overlap(mutations: &mut Vec<Mutation>) {
             false
         }
     });
+}
+
+pub fn apply_seq_mutations(orig_seq: &[Nuc], mut_seq: &mut Vec<Nuc>, mutations: &[Mutation]) {
+    let mut prev = 0;
+    for mutation in mutations {
+        let (start, end) = mutation.get_skip_range();
+        mut_seq.extend(&orig_seq[prev..start]);
+        prev = end;
+        match mutation {
+            Mutation::Snp { alt_base, .. } => {
+                mut_seq.push(*alt_base);
+            }
+            Mutation::Ins { alt_bases, .. } => {
+                mut_seq.extend(alt_bases);
+            }
+            Mutation::Del { .. } => {
+                // do nothing
+            }
+        }
+    }
+    mut_seq.extend(&orig_seq[prev..]);
 }
 
 #[cfg(test)]

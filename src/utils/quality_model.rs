@@ -1,3 +1,4 @@
+use crate::utils::mutation_model::MutationModel;
 use anyhow::{Result, anyhow};
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use log::info;
@@ -20,6 +21,8 @@ pub struct QualityModel {
     /// be capped at max_pos
     #[serde(skip)]
     max_pos: usize,
+    /// model for sequencing errors
+    pub seq_err_model: SeqErrorModel,
 }
 
 /// probability densities (non-cumulative)
@@ -29,19 +32,25 @@ struct InputData {
     weights: Vec<Vec<Vec<f64>>>,
 }
 
-macro_rules! qs_char {
-    ($q:expr) => {
-        ($q + 33) as u8 as char
-    };
-}
-
+#[allow(dead_code)]
 impl QualityModel {
     /// Check if model params are ok and saves max position
     pub fn finalize(&mut self) -> Result<()> {
+        // init mut_type to sample mutations
+        self.seq_err_model.mut_model.init_mut_type()?;
+        // check dimensions
         let l1 = self.zeroth.weights().count();
         let l2 = self.next.first().unwrap().len();
         if l1 != l2 {
             return Err(anyhow!("Quality score model has incompatible dimensions"));
+        }
+        let l3 = self.seq_err_model.error_probs.0.len();
+        if l1 != l3 {
+            return Err(anyhow!(
+                "Quality error model has incompatible dimensions: {} != {}",
+                l1,
+                l3
+            ));
         }
         let no_prob = self
             .next
@@ -56,8 +65,8 @@ impl QualityModel {
     }
     /// Serialize mutation model to a gzipped yaml file.
     pub fn write_to_file(&self, output_prefix: &Path) -> Result<()> {
-        let filename = output_prefix.with_extension("qs_model.yml.gz");
-        info!("Writing quality score to {}", filename.display());
+        let filename = output_prefix.with_extension("quality_model.yml.gz");
+        info!("Writing quality model to {}", filename.display());
         let file = std::fs::File::create(&filename)?;
         let encoder = GzEncoder::new(file, Compression::default());
         let mut writer = BufWriter::new(encoder);
@@ -98,6 +107,7 @@ impl QualityModel {
             zeroth: first,
             next,
             max_pos: 0,
+            seq_err_model: SeqErrorModel::default(),
         };
         qs.finalize()?;
         Ok(qs)
@@ -111,30 +121,59 @@ impl QualityModel {
         let wi = &self.next[pos][prev];
         wi.sample(rng)
     }
+    pub fn get_seq_err_prob(&self, q: usize) -> Result<f64> {
+        self.seq_err_model
+            .error_probs
+            .0
+            .get(q)
+            .cloned()
+            .ok_or_else(|| anyhow!("Quality score out of bounds"))
+    }
     pub fn generate_quality_scores<R: Rng>(
         &self,
         read_length: usize,
         rng: &mut R,
-    ) -> Result<String> {
-        let mut qs = String::with_capacity(read_length);
+    ) -> Result<Vec<usize>> {
+        let mut qs = Vec::with_capacity(read_length);
         // Insert the 0-th value
         let mut q = self.get_first(rng);
-        qs.push(qs_char!(q));
+        qs.push(q);
 
         let waypoint = self.max_pos.min(read_length);
 
         // Generate quality scores up to min(max_pos, read_length)
         for p in 1..waypoint {
             q = self.get_next(p, q, rng);
-            qs.push(qs_char!(q));
+            qs.push(q);
         }
 
         // Generate quality scores beyond max_pos (if needed)
         for _ in waypoint..read_length {
             q = self.get_next(waypoint, q, rng);
-            qs.push(qs_char!(q));
+            qs.push(q);
         }
 
         Ok(qs)
     }
+}
+
+/// Probability of error for a given quality score
+#[derive(Serialize, Deserialize)]
+pub struct ErrProbByQS(Vec<f64>);
+
+impl Default for ErrProbByQS {
+    fn default() -> Self {
+        let mut v = vec![0.001; 21];
+        v.extend(vec![0.0; 21]);
+        ErrProbByQS(v)
+    }
+}
+
+/// A model for sequencing errors in reads
+#[derive(Serialize, Deserialize, Default)]
+pub struct SeqErrorModel {
+    /// probability of error for a given quality score
+    pub error_probs: ErrProbByQS,
+    /// mutation model
+    pub mut_model: MutationModel,
 }

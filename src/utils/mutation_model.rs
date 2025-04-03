@@ -1,5 +1,5 @@
 use crate::utils::{
-    mutation::MutationType,
+    mutation::{Mutation, MutationType},
     nucleotides::{self, Nuc},
 };
 use anyhow::{Result, anyhow};
@@ -14,6 +14,9 @@ use std::collections::HashMap;
 pub struct MutationModel {
     /// Probabilities of different mutation types.
     pub mut_probabilities: MutProbabilities,
+    /// WightedIndex to sample mutation types.
+    #[serde(skip)]
+    pub mut_type: Option<WeightedIndex<f64>>,
     /// SNP mutation probabilities.
     pub snp_model: SnpModel,
     /// Insertion mutation probabilities.
@@ -29,6 +32,68 @@ impl MutationModel {
     /// Get the probability that a given mutation type occurs.
     pub fn get_mut_probability(&self, mut_type: MutationType) -> f64 {
         *self.mut_probabilities.p.get(&mut_type).unwrap_or(&0.0)
+    }
+    /// init mut_type based on the mutation probabilities
+    pub fn init_mut_type(&mut self) -> Result<()> {
+        if self.mut_type.is_some() {
+            return Ok(());
+        }
+        let weights: Vec<f64> = self.mut_probabilities.p.values().copied().collect();
+        self.mut_type = Some(WeightedIndex::new(weights)?);
+        Ok(())
+    }
+    /// get mutation type based on the mutation probabilities
+    pub fn get_mut_type<R: Rng>(&self, rng: &mut R) -> Result<MutationType> {
+        let mut_type_index = self
+            .mut_type
+            .as_ref()
+            .ok_or_else(|| anyhow!("Run init_mut_type before get_mut_type"))?
+            .sample(rng);
+        match mut_type_index {
+            0 => Ok(MutationType::Snp),
+            1 => Ok(MutationType::Ins),
+            2 => Ok(MutationType::Del),
+            _ => unreachable!(),
+        }
+    }
+    /// Create new snp mutation at given position
+    pub fn create_snp<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
+        let snp_model = &self.snp_model;
+        let ref_base = seq[pos];
+        let alt_base = snp_model.choose_new_nuc(ref_base, rng)?;
+        // construct and return the mutation
+        Mutation::new_snp(pos, ref_base, alt_base)
+    }
+    /// Create new insert mutation at given position
+    pub fn create_ins<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
+        let ins_model = &self.ins_model;
+        let ref_base = seq[pos];
+        let alt_bases = ins_model.get_alt_bases(ref_base, rng);
+        // construct and return the mutation
+        Mutation::new_ins(pos, ref_base, alt_bases)
+    }
+    /// Create new deletion mutation at given position
+    pub fn create_del<R: Rng>(&self, seq: &[Nuc], pos: usize, rng: &mut R) -> Result<Mutation> {
+        let del_model = &self.del_model;
+        let max_len = seq.len() - pos - 1;
+        let len = 1 + del_model.get_len(max_len, rng); // delete after current base
+        let ref_seq = seq[pos..pos + len].to_vec();
+        // construct and return the mutation
+        Mutation::new_del(pos, ref_seq)
+    }
+    /// create new mutation
+    pub fn create_mutation<R: Rng>(
+        &self,
+        m: MutationType,
+        seq: &[Nuc],
+        pos: usize,
+        rng: &mut R,
+    ) -> Result<Mutation> {
+        match m {
+            MutationType::Snp => self.create_snp(seq, pos, rng),
+            MutationType::Ins => self.create_ins(seq, pos, rng),
+            MutationType::Del => self.create_del(seq, pos, rng),
+        }
     }
 }
 
