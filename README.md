@@ -67,7 +67,7 @@ cargo run -r -- -c config/crusty_test.yml --log-level debug --read_len 100 --cov
 
 For a full list of command line parameters just run
 ```bash
-cargo run -- -h
+cargo run -r -- -h
 ```
 
 # License
