@@ -48,7 +48,7 @@ impl QualityModel {
             .iter()
             .all(|v| v.iter().all(|wi| wi.weights().count() == l1));
         if no_prob {
-            self.max_pos = l1;
+            self.max_pos = self.next.len() - 1;
             Ok(())
         } else {
             Err(anyhow!("Quality score model has incompatible dimensions"))
