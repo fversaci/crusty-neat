@@ -25,8 +25,10 @@ fn gen_read_mutations<R: Rng>(
         let mut_model = &quality_model.seq_err_model.mut_model;
         if rng.random_bool(p) {
             let mut_type = mut_model.get_mut_type(rng)?;
-            let mutation = mut_model.create_mutation(mut_type, seq, pos, rng)?;
-            mutations.push(mutation);
+            let mutation = mut_model.create_mutation(mut_type, seq, pos, rng).ok();
+            if let Some(mutation) = mutation {
+                mutations.push(mutation);
+            }
         }
     }
     mutation::sort_filter_overlap(&mut mutations);
