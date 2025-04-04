@@ -5,6 +5,7 @@ use chrono::Local;
 use log::info;
 use rand::Rng;
 use rand::seq::index::sample;
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
@@ -30,52 +31,54 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 }
 
 pub struct VcfParams<'a> {
+    /// Lengths of contigs in the reference genome.
+    pub contig_lengths: HashMap<String, usize>,
+    /// The generated mutations, indexed by contig.
     pub mutations: &'a MutByContig,
+    /// The order of contigs in the reference genome.
     pub contig_order: &'a Vec<String>,
+    /// The number of copies of each chromosome present in the organism.
     pub ploidy: usize,
+    /// The probability of generating the same mutation in multiple
+    /// copies of the chromosome.
     pub prob_mut_multiple: f64,
+    /// The path to the reference file that this VCF is showing
+    /// variants from.
     pub reference_path: &'a Path,
-    pub overwrite_output: bool,
+    /// The directory path and filename prefix for output files.
     pub output_prefix: &'a Path,
+    /// The flag to overwrite existing output files.
+    pub overwrite_output: bool,
 }
 
 /// Processes variant data and writes output files.
-///
-/// # Arguments
-///
-/// * `mutations` - The generated mutations, indexed by contig
-/// * `fasta_order` - A vector of contig names in the order they
-///   appear in the reference FASTA.
-/// * `ploidy` - The number of copies of each chromosome present in
-///   the organism.
-/// * `reference_path` - The path to the reference file that this VCF
-///   is showing variants from.
-/// * `output_file_prefix` - The directory path and filename prefix
-///   for output files.
-/// * `rng` - A random number generator for this run.
-pub fn write_vcf<R: Rng>(
-    p: VcfParams,
-    rng: &mut R,
-) -> Result<()> {
+pub fn write_vcf<R: Rng>(p: VcfParams, rng: &mut R) -> Result<()> {
     let filename = p.output_prefix.with_extension("vcf");
     info!("Writing {}", filename.display());
 
     let mut outfile = open_file(&filename, p.overwrite_output)?;
 
-    let vcf_headers = [
+    let mut vcf_headers: Vec<String> = vec![
         // File format and reference
-        "##fileformat=VCFv4.5",
-        &format!("##fileDate={}", Local::now().format("%Y%m%d")),
-        "##source=crusty-neat",
-        &format!("##reference={}", p.reference_path.display()),
-        // INFO fields
-        "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">",
-        "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">",
-        // FORMAT fields
-        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
-        // Column headers
-        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsim_sample",
+        "##fileformat=VCFv4.3".to_string(),
+        format!("##fileDate={}", Local::now().format("%Y%m%d")),
+        "##source=crusty-neat".to_string(),
+        format!("##reference={}", p.reference_path.display()),
     ];
+    // contig fields
+    for (contig, length) in &p.contig_lengths {
+        let line = format!("##contig=<ID={},length={}>", contig, length);
+        vcf_headers.push(line);
+    }
+    vcf_headers.extend_from_slice(&[
+        // INFO fields
+        "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">".to_string(),
+        "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">".to_string(),
+        // FORMAT fields
+        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">".to_string(),
+        // Column headers
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsim_sample".to_string(),
+    ]);
 
     // Write all lines
     for line in &vcf_headers {
@@ -151,6 +154,7 @@ mod tests {
         let overwrite_output = false;
         let vcf_params = VcfParams {
             mutations: &variants,
+            contig_lengths: HashMap::from([("chr1".to_string(), 100)]),
             contig_order: &contig_order,
             ploidy,
             prob_mut_multiple,
@@ -158,10 +162,7 @@ mod tests {
             overwrite_output,
             output_prefix: &output_file_prefix,
         };
-        write_vcf(
-            vcf_params,
-            &mut rng,
-        )?;
+        write_vcf(vcf_params, &mut rng)?;
         let output_file = tmp_dir.path().join("test.vcf");
         assert!(output_file.exists());
         Ok(())

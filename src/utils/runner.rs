@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::utils::config::RunConfiguration;
 use crate::utils::fasta_tools::{read_fasta, write_fasta};
 use crate::utils::fastq_tools::write_fastq;
@@ -7,7 +9,7 @@ use crate::utils::mutate::{apply_mutations, mutate_genome};
 use crate::utils::nucleotides::Nuc;
 use crate::utils::quality_model::QualityModel;
 use crate::utils::ref_mutation_model::RefMutationModel;
-use crate::utils::vcf_tools::{write_vcf, VcfParams};
+use crate::utils::vcf_tools::{VcfParams, write_vcf};
 use anyhow::Result;
 use log::{info, trace};
 use rand::Rng;
@@ -63,8 +65,17 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
         )?;
     }
 
+    // compute HashMap of contig lengths
+    let mut contig_lengths = HashMap::new();
+    for entry in mut_genome.iter() {
+        let contig = entry.key();
+        let seq = entry.value();
+        contig_lengths.insert(contig.to_string(), seq.len());
+    }
+
     if config.produce_vcf == Some(true) {
         let vcf_params = VcfParams {
+            contig_lengths,
             mutations: &mutations,
             contig_order: &contig_order,
             ploidy: config.ploidy.unwrap(),
@@ -73,10 +84,7 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
             overwrite_output: config.overwrite_output.unwrap(),
             output_prefix: &output_prefix,
         };
-        write_vcf(
-            vcf_params,
-            rng,
-        )?;
+        write_vcf(vcf_params, rng)?;
     }
 
     if config.produce_fastq == Some(true) {
