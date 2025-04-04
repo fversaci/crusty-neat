@@ -27,15 +27,15 @@ impl Write for FileWriter {
     }
 }
 
-pub fn open_file(filename: &PathBuf, overwrite_file: bool, gzipped: bool) -> Result<FileWriter> {
+pub fn open_file(filename: &PathBuf, overwrite_file: bool) -> Result<FileWriter> {
     let file = if overwrite_file && filename.exists() {
         File::options().truncate(true).write(true).open(filename)
     } else {
         File::options().create_new(true).append(true).open(filename)
     };
     let file = file?;
-    let writer = if gzipped {
-        let encoder = GzEncoder::new(file, Compression::default());
+    let writer = if filename.extension() == Some("gz".as_ref()) {
+        let encoder = GzEncoder::new(file, Compression::fast());
         FileWriter::Gzipped(BufWriter::new(encoder))
     } else {
         FileWriter::Plain(BufWriter::new(file))

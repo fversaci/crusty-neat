@@ -175,8 +175,7 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
             }
             let name_prefix = format!("crusty_neat_generated_{}_", chunk_index);
             let file1_path = dir1.join(format!("{}.fastq.gz", chunk_index));
-            let gzipped = true;
-            let mut file1 = open_file(&file1_path, overwrite_output, gzipped)?;
+            let mut file1 = open_file(&file1_path, overwrite_output)?;
 
             for (order_index, sequence) in chunk.iter().enumerate() {
                 write_sequence_with_errors(
@@ -191,9 +190,8 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
             }
 
             if paired_ended {
-                let file2_path = dir2.join(format!("{}.fastq", chunk_index));
-                let gzipped = true;
-                let mut file2 = open_file(&file2_path, overwrite_output, gzipped)?;
+                let file2_path = dir2.join(format!("{}.fastq.gz", chunk_index));
+                let mut file2 = open_file(&file2_path, overwrite_output)?;
                 for (order_index, sequence) in chunk.iter().enumerate() {
                     let rev_comp_sequence = reverse_complement(sequence);
                     write_sequence_with_errors(

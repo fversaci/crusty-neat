@@ -55,8 +55,7 @@ pub struct VcfParams<'a> {
 pub fn write_vcf<R: Rng>(p: VcfParams, rng: &mut R) -> Result<()> {
     let filename = p.output_prefix.with_extension("vcf");
     info!("Writing {}", filename.display());
-    let gzipped = false;
-    let mut outfile = open_file(&filename, p.overwrite_output, gzipped)?;
+    let mut outfile = open_file(&filename, p.overwrite_output)?;
 
     let mut vcf_headers: Vec<String> = vec![
         // File format and reference
