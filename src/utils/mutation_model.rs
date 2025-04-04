@@ -154,7 +154,7 @@ impl SnpModel {
             Nuc::C => &self.c,
             Nuc::G => &self.g,
             Nuc::T => &self.t,
-            _ => return Err(anyhow!("Invalid input base")),
+            _ => return Err(anyhow!("Invalid input base: {:?}", base)),
         };
         // Sample the distribution
         match dist.sample(rng) {
