@@ -71,7 +71,8 @@ pub fn write_fasta(
     // writing fasta output to files
     let output_fasta = output_prefix.with_extension("fasta");
     info!("Writing {}", output_fasta.display());
-    let mut outfile = open_file(&output_fasta, overwrite_output)?;
+    let gzipped = false;
+    let mut outfile = open_file(&output_fasta, overwrite_output, gzipped)?;
 
     for contig in fasta_order {
         let sequence = &fasta_output.get(contig).unwrap();
