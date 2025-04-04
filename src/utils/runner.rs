@@ -7,7 +7,7 @@ use crate::utils::mutate::{apply_mutations, mutate_genome};
 use crate::utils::nucleotides::Nuc;
 use crate::utils::quality_model::QualityModel;
 use crate::utils::ref_mutation_model::RefMutationModel;
-use crate::utils::vcf_tools::write_vcf;
+use crate::utils::vcf_tools::{write_vcf, VcfParams};
 use anyhow::Result;
 use log::{info, trace};
 use rand::Rng;
@@ -64,14 +64,17 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
     }
 
     if config.produce_vcf == Some(true) {
+        let vcf_params = VcfParams {
+            mutations: &mutations,
+            contig_order: &contig_order,
+            ploidy: config.ploidy.unwrap(),
+            prob_mut_multiple: mut_model.mm.prob_mut_multiple,
+            reference_path: &config.reference.unwrap(),
+            overwrite_output: config.overwrite_output.unwrap(),
+            output_prefix: &output_prefix,
+        };
         write_vcf(
-            &mutations,
-            &contig_order,
-            config.ploidy.unwrap(),
-            mut_model.mm.prob_mut_multiple,
-            &config.reference.unwrap(),
-            config.overwrite_output.unwrap(),
-            &output_prefix,
+            vcf_params,
             rng,
         )?;
     }

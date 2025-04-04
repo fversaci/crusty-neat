@@ -29,6 +29,16 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
         .to_string())
 }
 
+pub struct VcfParams<'a> {
+    pub mutations: &'a MutByContig,
+    pub contig_order: &'a Vec<String>,
+    pub ploidy: usize,
+    pub prob_mut_multiple: f64,
+    pub reference_path: &'a Path,
+    pub overwrite_output: bool,
+    pub output_prefix: &'a Path,
+}
+
 /// Processes variant data and writes output files.
 ///
 /// # Arguments
@@ -44,26 +54,20 @@ fn genotype_to_string(genotype: Vec<usize>) -> Result<String> {
 ///   for output files.
 /// * `rng` - A random number generator for this run.
 pub fn write_vcf<R: Rng>(
-    mutations: &MutByContig,
-    fasta_order: &Vec<String>,
-    ploidy: usize,
-    prob_mut_multiple: f64,
-    reference_path: &Path,
-    overwrite_output: bool,
-    output_prefix: &Path,
+    p: VcfParams,
     rng: &mut R,
 ) -> Result<()> {
-    let filename = output_prefix.with_extension("vcf");
+    let filename = p.output_prefix.with_extension("vcf");
     info!("Writing {}", filename.display());
 
-    let mut outfile = open_file(&filename, overwrite_output)?;
+    let mut outfile = open_file(&filename, p.overwrite_output)?;
 
     let vcf_headers = [
         // File format and reference
         "##fileformat=VCFv4.5",
         &format!("##fileDate={}", Local::now().format("%Y%m%d")),
         "##source=crusty-neat",
-        &format!("##reference={}", reference_path.display()),
+        &format!("##reference={}", p.reference_path.display()),
         // INFO fields
         "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">",
         "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">",
@@ -79,17 +83,17 @@ pub fn write_vcf<R: Rng>(
     }
 
     // insert mutations
-    for contig in fasta_order {
-        for mutation in &mutations[contig] {
+    for contig in p.contig_order {
+        for mutation in &p.mutations[contig] {
             // Mutate more than copy of the chromosome?
-            let mut genotype: Vec<usize> = vec![0; ploidy];
+            let mut genotype: Vec<usize> = vec![0; p.ploidy];
             let mut num_ploids: usize = 1;
-            let multiple_mut = rng.random_bool(prob_mut_multiple);
-            if multiple_mut && ploidy > 1 {
-                num_ploids = rng.random_range(2..=ploidy);
+            let multiple_mut = rng.random_bool(p.prob_mut_multiple);
+            if multiple_mut && p.ploidy > 1 {
+                num_ploids = rng.random_range(2..=p.ploidy);
             }
             // mark mutated ploids
-            for i in sample(rng, ploidy, num_ploids) {
+            for i in sample(rng, p.ploidy, num_ploids) {
                 genotype[i] = 1;
             }
             // Format the output line. Any fields without data
@@ -138,21 +142,24 @@ mod tests {
                 Mutation::new_snp(7, seq[7], seq[7].complement()).unwrap(),
             ],
         )]);
-        let fasta_order = vec!["chr1".to_string()];
+        let contig_order = vec!["chr1".to_string()];
         let ploidy = 2;
         let prob_mut_multiple = 0.1;
         let reference_path = PathBuf::from("/fake/path/to/H1N1.fa");
         let tmp_dir = TempDir::new("crusty_neat")?;
         let output_file_prefix = tmp_dir.path().join("test");
         let overwrite_output = false;
-        write_vcf(
-            &variants,
-            &fasta_order,
+        let vcf_params = VcfParams {
+            mutations: &variants,
+            contig_order: &contig_order,
             ploidy,
             prob_mut_multiple,
-            &reference_path,
+            reference_path: &reference_path,
             overwrite_output,
-            &output_file_prefix,
+            output_prefix: &output_file_prefix,
+        };
+        write_vcf(
+            vcf_params,
             &mut rng,
         )?;
         let output_file = tmp_dir.path().join("test.vcf");
