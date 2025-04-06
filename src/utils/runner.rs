@@ -133,7 +133,7 @@ pub fn run_neat<R: Rng + Clone + Send + Sync>(config: RunConfiguration, rng: &mu
             config.paired_ended.unwrap(),
             reads,
             &quality_model,
-            &mut rng.clone(),
+            rng,
         )?;
     }
     info!("Processing complete");

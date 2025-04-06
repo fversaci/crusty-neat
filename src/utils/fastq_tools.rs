@@ -7,6 +7,8 @@ use crate::utils::nucleotides::{Nuc, reverse_complement, seq_to_string};
 use crate::utils::quality_model::QualityModel;
 use anyhow::Result;
 use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use rayon::prelude::ParallelSlice;
 use std::fs::create_dir_all;
@@ -82,13 +84,13 @@ macro_rules! qs_char {
     };
 }
 
-fn write_sequence_with_errors<W: Write>(
+fn write_sequence_with_errors<W: Write, R: Rng>(
     outfile: &mut W,
     name_prefix: &str,
     order_index: usize,
     sequence: &[Nuc],
     quality_model: &QualityModel,
-    rng: &mut impl Rng,
+    rng: &mut R,
     read_number: u8,
 ) -> Result<()> {
     let read_length = sequence.len();
@@ -152,7 +154,7 @@ fn write_sequence<W: Write>(
 /// * `quality_score_model` - A `QualityScoreModel` object to generate
 ///   quality scores.
 /// * `rng` - A random number generator.
-pub fn write_fastq<R: Rng + Send + Sync + Clone>(
+pub fn write_fastq<R: Rng + Send + Sync>(
     output_prefix: &Path,
     overwrite_output: bool,
     paired_ended: bool,
@@ -167,6 +169,7 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
     if paired_ended {
         create_dir_all(&dir2)?;
     }
+    let seed = rng.next_u64();
     let max_chunk = 100000;
     reads
         .par_chunks(max_chunk)
@@ -175,6 +178,10 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
             if chunk.is_empty() {
                 return Ok(());
             }
+
+            // create a local rng for this chunk
+            let mut local_rng = StdRng::seed_from_u64(seed + (chunk_index as u64));
+
             let name_prefix = format!("crusty_neat_generated_{}_", chunk_index);
             let file1_path = dir1.join(format!("{}.fastq.gz", chunk_index));
             let mut file1 = open_file(&file1_path, overwrite_output)?;
@@ -186,7 +193,7 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
                     order_index,
                     sequence,
                     quality_model,
-                    &mut rng.clone(),
+                    &mut local_rng,
                     1,
                 )?;
             }
@@ -202,7 +209,7 @@ pub fn write_fastq<R: Rng + Send + Sync + Clone>(
                         order_index,
                         &rev_comp_sequence,
                         quality_model,
-                        &mut rng.clone(),
+                        &mut local_rng,
                         2,
                     )?;
                 }
