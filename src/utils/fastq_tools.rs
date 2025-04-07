@@ -21,10 +21,10 @@ fn gen_read_mutations<R: Rng>(
     quality_model: &QualityModel,
     rng: &mut R,
 ) -> Result<Vec<Mutation>> {
+    let mut_model = &quality_model.seq_err_model.mut_model;
     let mut mutations: Vec<Mutation> = Vec::new();
     for (pos, q) in quality_nums.iter().enumerate() {
         let p = quality_model.get_seq_err_prob(*q)?;
-        let mut_model = &quality_model.seq_err_model.mut_model;
         if rng.random_bool(p) {
             let mut_type = mut_model.get_mut_type(rng)?;
             let mutation = mut_model.create_mutation(mut_type, seq, pos, rng).ok();
