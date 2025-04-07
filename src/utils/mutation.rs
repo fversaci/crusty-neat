@@ -38,7 +38,13 @@ impl Mutation {
     pub fn get_interference_range(&self) -> (usize, usize) {
         match self {
             // trinucleotide-context SNPs depend on three positions
-            Mutation::Snp { pos, .. } => (pos - 1, pos + 2),
+            Mutation::Snp { pos, .. } => {
+                if *pos != 0 {
+                    (pos - 1, pos + 2)
+                } else {
+                    (0, 2)
+                }
+            }
             // Keep the nucleotide before the insertion
             Mutation::Ins { pos, .. } => (*pos, *pos + 1),
             // Keep the nucleotide before the deletion and don't
