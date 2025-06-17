@@ -67,7 +67,7 @@ pub fn apply_read_mutations(
             Mutation::Ins { alt_bases, .. } => {
                 mut_seq.extend(alt_bases);
                 // repeat same quality score for the inserted bases
-                mut_qnums.extend(std::iter::repeat(orig_qnums[start]).take(alt_bases.len()));
+                mut_qnums.extend(std::iter::repeat_n(orig_qnums[start], alt_bases.len()));
             }
             Mutation::Del { .. } => {
                 // do nothing
