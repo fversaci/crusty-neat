@@ -27,8 +27,9 @@ fn gen_read_mutations<R: Rng>(
         let p = quality_model.get_seq_err_prob(*q)?;
         if rng.random_bool(p) {
             let mut_type = mut_model.get_mut_type(rng)?;
-            let mutation = mut_model.create_mutation(mut_type, seq, pos, rng).ok();
-            if let Some(mutation) = mutation {
+            let mutation = mut_model.create_mutation(mut_type, seq, pos, rng);
+            // if mutation is ok, add it to the mutations list
+            if let Ok(mutation) = mutation {
                 mutations.push(mutation);
             }
         }
