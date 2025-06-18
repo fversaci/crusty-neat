@@ -13,6 +13,32 @@ pub enum Nuc {
     N,
 }
 
+#[macro_export]
+macro_rules! nuc_to_idx {
+    ($x:expr) => {
+        match $x {
+            Nuc::A => Ok(0),
+            Nuc::C => Ok(1),
+            Nuc::G => Ok(2),
+            Nuc::T => Ok(3),
+            _ => Err(anyhow::anyhow!("Invalid input base")),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! idx_to_nuc {
+    ($x:expr) => {
+        match $x {
+            0 => Ok(Nuc::A),
+            1 => Ok(Nuc::C),
+            2 => Ok(Nuc::G),
+            3 => Ok(Nuc::T),
+            _ => Err(anyhow!("Invalid index for nucleotide")),
+        }
+    };
+}
+
 impl Nuc {
     /// Convert a nucleotide to a base character.
     pub fn to_base(self) -> char {
